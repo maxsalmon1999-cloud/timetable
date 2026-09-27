@@ -229,10 +229,12 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-09-27**: Big UI redesign from `design_handoff_timetable_redesign/`: pastel neo-brutalist look, Bricolage Grotesque +
   DM Mono, Phosphor icons, activity icons + searchable icon library, student starter activities, fit-to-height 9:00–22:00
   day that auto-widens (+ Earlier / + Later), data v2 (pastel colours, icon fields) with v1 migration, new app icon,
-  overlay title bar. Not yet released.
-- **2026-09-27**: "Create a template" builds a template on a blank week (`templateDraft`). Not yet released.
+  overlay title bar.
+- **2026-09-27**: "Create a template" builds a template on a blank week (`templateDraft`).
 - **2026-09-27**: Fix: Calendar sync never prompted for access (hardened runtime without the calendars entitlement).
-  Added `src-tauri/Entitlements.plist`. Not yet released.
+  Added `src-tauri/Entitlements.plist`.
 - **2026-09-27**: FIXES.md round: 4-tier block layout, activity icons guessed from names (data v3 migration, follow-through
   on icon edits, live suggestions, no letter discs), Duotone segment fix, real traffic lights in the sidebar header (no top
-  band), icon library opens on the current icon's category. Handoff folder replaced by the updated one. Not yet released.
+  band), icon library opens on the current icon's category. Handoff folder replaced by the updated one.
+- **2026-09-27**: **Released v0.3.0** (universal): redesign, icons, create-a-template, FIXES.md round, calendar entitlement fix.
+  Installed copies auto-update; fresh installs via the Timetable.dmg link.
