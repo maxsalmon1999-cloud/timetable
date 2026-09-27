@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { CaretDownIcon, CopyIcon, SquaresFourIcon, StarIcon, TrashIcon, XIcon } from '@phosphor-icons/react'
 import type { Template } from '../lib/types'
 
 interface Props {
@@ -35,19 +36,25 @@ export function TemplatesMenu(p: Props) {
 
   return (
     <div className="menu-wrap" ref={ref}>
-      <button className={'btn' + (open ? ' active' : '')} onClick={() => setOpen(!open)}>
-        Week templates ▾
+      <button className={'btn lemon' + (open ? ' active' : '')} title="Week templates" onClick={() => setOpen(!open)}>
+        <SquaresFourIcon size={22} weight="bold" />
+        <span className="btn-label">Week templates</span>
+        <CaretDownIcon size={16} weight="bold" />
       </button>
       {open && (
-        <div className="menu">
+        <div className="menu panel">
           <div className="menu-section">Use a template for this week</div>
           {p.templates.length === 0 && <div className="menu-empty">No templates yet. Lay out a typical week, then save it below.</div>}
           {p.templates.map((t) => (
             <div key={t.id} className="menu-row">
               <button className="menu-item grow" onClick={act(() => p.onApply(t))}>
-                {t.name} <span className="muted">· {t.blocks.length} blocks</span>
+                <SquaresFourIcon size={20} weight="bold" />
+                <span className="menu-label">{t.name}</span>
+                <span className="mono menu-meta">{t.blocks.length} blocks</span>
               </button>
-              <button className="icon-btn" title="Delete template" onClick={() => p.onDeleteTemplate(t.id)}>✕</button>
+              <button className="menu-x" title="Delete template" onClick={() => p.onDeleteTemplate(t.id)}>
+                <XIcon size={18} weight="bold" />
+              </button>
             </div>
           ))}
 
@@ -65,15 +72,20 @@ export function TemplatesMenu(p: Props) {
               }}
             >
               <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name, e.g. Normal week" />
-              <button className="btn small primary" disabled={!name.trim()}>Save</button>
+              <button className="btn primary" disabled={!name.trim()}>Save</button>
             </form>
           ) : (
             <button className="menu-item" disabled={!p.weekHasBlocks} onClick={() => setNaming(true)}>
-              ★ Save this week as a template…
+              <StarIcon size={20} weight="bold" />
+              Save this week as a template…
             </button>
           )}
-          <button className="menu-item" onClick={act(p.onCopyLastWeek)}>⧉ Copy last week into this week</button>
+          <button className="menu-item" onClick={act(p.onCopyLastWeek)}>
+            <CopyIcon size={20} weight="bold" />
+            Copy last week into this week
+          </button>
           <button className="menu-item danger" disabled={!p.weekHasBlocks} onClick={act(p.onClearWeek)}>
+            <TrashIcon size={20} weight="bold" />
             Clear this week
           </button>
         </div>

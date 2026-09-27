@@ -2,21 +2,15 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { loadData, saveData, type LoadResult } from './storage'
 import type { AppData } from './types'
 import { uid } from './constants'
+import { SEED_ACTIVITIES } from './icons'
+import { migrate } from './migrate'
 
 const HISTORY_LIMIT = 100
 
 function seed(): AppData {
-  const a = (name: string, color: string, duration: number) => ({ id: uid(), name, color, duration })
   return {
-    version: 1,
-    activities: [
-      a('Work', '#4A7DFF', 240),
-      a('Gym', '#2FB36B', 60),
-      a('Lunch', '#F29B38', 60),
-      a('Reading', '#9B6BE0', 30),
-      a('Friends', '#EF5B7B', 120),
-      a('Admin', '#8A8F98', 30),
-    ],
+    version: 2,
+    activities: SEED_ACTIVITIES.map((a) => ({ id: uid(), ...a })),
     blocks: [],
     templates: [],
   }
@@ -74,9 +68,10 @@ export function useAppData() {
   useEffect(() => {
     loadData()
       .then((r) => {
+        const data = r.data ? migrate(r.data) : seed() // throws → load-failed, and nothing is ever saved
         canSave.current = true
         setInfo({ restoredFrom: r.restoredFrom, folder: r.folder })
-        dispatch({ type: 'load', data: r.data ?? seed() })
+        dispatch({ type: 'load', data })
       })
       .catch((e) => setStatus({ kind: 'load-failed', message: String(e) }))
   }, [])

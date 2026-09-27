@@ -5,7 +5,7 @@ activities, save it as a template, and stamp it onto upcoming weeks.
 
 ## Using it
 
-- **Drag an activity** from the left sidebar onto the week to place it.
+- **Drag an activity** from the left sidebar onto the week to place it. **+** makes a new activity with an icon.
 - **Drag on empty space** to create a block of any length.
 - **Drag a block** to move it, or drag its bottom edge to resize. Hold ⌥ while dropping to copy.
 - **Click a block** to rename, recolour, change its times or delete it.
@@ -13,6 +13,8 @@ activities, save it as a template, and stamp it onto upcoming weeks.
   week you're viewing, copy last week, or clear the week.
 - **Sync with Calendar** (next to the week title) shows that week's Apple Calendar events. They keep
   updating by themselves; anything of yours that clashes with an event gets a red outline and ⚠.
+- The whole week always fits on screen (9:00–22:00). **+ Earlier** / **+ Later** show more hours, and the day widens
+  by itself if something is planned outside it.
 - ⌘Z / ⇧⌘Z undo and redo.
 - Your plans are saved automatically in Documents › Timetable Plans, with a daily backup.
 

@@ -30,12 +30,14 @@ export function fmtDuration(min: number) {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
+/** "21 – 27 September" (year added when it isn't this year) */
 export function weekLabel(weekStart: Date) {
   const end = addDays(weekStart, 6)
-  const month = (d: Date) => d.toLocaleDateString(undefined, { month: 'long' })
-  if (weekStart.getMonth() === end.getMonth())
-    return `${weekStart.getDate()} – ${end.getDate()} ${month(end)} ${end.getFullYear()}`
-  if (weekStart.getFullYear() === end.getFullYear())
-    return `${weekStart.getDate()} ${month(weekStart)} – ${end.getDate()} ${month(end)} ${end.getFullYear()}`
-  return `${weekStart.getDate()} ${month(weekStart)} ${weekStart.getFullYear()} – ${end.getDate()} ${month(end)} ${end.getFullYear()}`
+  const month = (d: Date) => d.toLocaleDateString('en-GB', { month: 'long' })
+  const thisYear = new Date().getFullYear()
+  const year = (d: Date) => (d.getFullYear() === thisYear ? '' : ` ${d.getFullYear()}`)
+  if (weekStart.getFullYear() !== end.getFullYear())
+    return `${weekStart.getDate()} ${month(weekStart)} ${weekStart.getFullYear()} – ${end.getDate()} ${month(end)} ${end.getFullYear()}`
+  if (weekStart.getMonth() === end.getMonth()) return `${weekStart.getDate()} – ${end.getDate()} ${month(end)}${year(end)}`
+  return `${weekStart.getDate()} ${month(weekStart)} – ${end.getDate()} ${month(end)}${year(end)}`
 }

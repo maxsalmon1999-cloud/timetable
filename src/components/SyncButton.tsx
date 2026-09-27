@@ -1,35 +1,44 @@
+import { CalendarBlankIcon, CalendarCheckIcon, CalendarPlusIcon, WarningIcon } from '@phosphor-icons/react'
 import type { SyncState } from '../lib/useCalendarSync'
 import { fmtTime } from '../lib/dates'
 
 export function SyncButton({ synced, state, onClick }: { synced: boolean; state: SyncState; onClick: () => void }) {
   if (!synced)
     return (
-      <button className="btn sync" onClick={onClick} title="Show this week's Apple Calendar events">
-        <CalIcon /> Sync with Calendar
+      <button className="btn sky" onClick={onClick} title="Show this week's Apple Calendar events">
+        <CalendarPlusIcon size={22} weight="bold" />
+        <span className="btn-label">Sync with Calendar</span>
       </button>
     )
 
-  const [label, title, cls] =
-    state.kind === 'ok'
-      ? ['Calendar synced', `Updated at ${fmtTime(state.at.getHours() * 60 + state.at.getMinutes())}. Keeps updating by itself; click to refresh now.`, 'ok']
-      : state.kind === 'no-access'
-        ? ['Calendar access off', 'Timetable is not allowed to see your calendars. Click for help.', 'warn']
-        : state.kind === 'error'
-          ? ['Sync problem', state.message, 'warn']
-          : ['Syncing…', '', '']
+  if (state.kind === 'no-access' || state.kind === 'error')
+    return (
+      <button
+        className="btn danger"
+        onClick={onClick}
+        title={state.kind === 'error' ? state.message : 'Timetable isn’t allowed to see your calendars. Click for help.'}
+      >
+        <WarningIcon size={22} weight="bold" />
+        <span className="btn-label">{state.kind === 'error' ? 'Sync problem' : 'Calendar access off'}</span>
+      </button>
+    )
+
+  if (state.kind === 'ok')
+    return (
+      <button
+        className="btn sky"
+        onClick={onClick}
+        title={`Updated at ${fmtTime(state.at.getHours() * 60 + state.at.getMinutes())}. Keeps updating by itself; click to refresh now.`}
+      >
+        <CalendarCheckIcon size={22} weight="bold" />
+        <span className="btn-label">Synced</span>
+      </button>
+    )
 
   return (
-    <button className={'btn sync ' + cls} onClick={onClick} title={title}>
-      {cls === 'ok' ? '✓' : cls === 'warn' ? '⚠' : <CalIcon />} {label}
+    <button className="btn sky" onClick={onClick} title="Syncing…">
+      <CalendarBlankIcon size={22} weight="bold" />
+      <span className="btn-label">Syncing…</span>
     </button>
-  )
-}
-
-function CalIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true" style={{ verticalAlign: '-2px' }}>
-      <rect x="1.5" y="2.5" width="13" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M1.5 6h13M5 1v3M11 1v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
   )
 }

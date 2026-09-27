@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type PointerEvent as RPointerEvent } from 'react'
 import { useAppData } from './lib/store'
 import type { Activity, Block, Template, TemplateBlock } from './lib/types'
-import { DAY_END, DAY_START, SNAP, snap, uid } from './lib/constants'
-import { addDays, startOfWeek, toISO, weekDates, weekLabel } from './lib/dates'
+import { MAX_END, MIN_START, SNAP, snap, uid } from './lib/constants'
+import { addDays, fmtTime, startOfWeek, toISO, weekDates, weekLabel } from './lib/dates'
 import { WeekGrid, type HitTest, type Preview } from './components/WeekGrid'
 import { Sidebar } from './components/Sidebar'
 import { BlockEditor } from './components/BlockEditor'
 import { TemplatesMenu } from './components/TemplatesMenu'
 import { Confirm } from './components/Modal'
 import { revealDataFolder } from './lib/storage'
-import { accessStatus, openPrivacySettings, requestAccess } from './lib/calendar'
+import { accessStatus, eventsForDay, openPrivacySettings, requestAccess } from './lib/calendar'
+import { DEFAULT_TARGETS, visibleRange, type RangeTargets } from './lib/dayRange'
+import { PALETTE } from './lib/icons'
+import { ActivityIcon } from './components/ActivityIcon'
+import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react'
 import { useCalendarSync } from './lib/useCalendarSync'
 import { SyncButton } from './components/SyncButton'
 import { UpdateNotice } from './components/UpdateNotice'
@@ -27,6 +31,16 @@ type Editing = { block: Block; isNew: boolean }
 type Confirming = Omit<ComponentProps<typeof Confirm>, 'onClose'>
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+
+/** what a block carries over when copied (to/from activities and templates) */
+const look = (x: { title?: string; name?: string; color: string; icon?: string; iconWeight?: Block['iconWeight'] }) => ({
+  title: x.title ?? x.name ?? '',
+  color: x.color,
+  ...(x.icon ? { icon: x.icon } : {}),
+  ...(x.iconWeight ? { iconWeight: x.iconWeight } : {}),
+})
+
+const NEW_BLOCK_COLOR = PALETTE.sky
 
 export default function App() {
   const { data, update, undo, redo, canUndo, canRedo, status, retrySave, folder, restoredFrom } = useAppData()
@@ -46,6 +60,16 @@ export default function App() {
   const synced = !!data?.syncedWeeks?.includes(weekKey)
   const cal = useCalendarSync(weekStart, synced)
   const updater = useUpdater()
+
+  // ---------- visible hours ----------
+  const [targets, setTargets] = useState<RangeTargets & { week: string }>({ ...DEFAULT_TARGETS, week: weekKey })
+  const target = targets.week === weekKey ? targets : { ...DEFAULT_TARGETS, week: weekKey } // resets on week change
+  const setTarget = (t: Partial<RangeTargets>) => setTargets({ ...target, ...t })
+  const dayEvents = useMemo(() => dates.map((d) => eventsForDay(cal.events, d)), [dates, cal.events])
+  const range = useMemo(
+    () => visibleRange([...weekBlocks, ...dayEvents.flatMap((d) => d.timed)], target, fmtTime),
+    [weekBlocks, dayEvents, target.top, target.bottom], // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   // ---------- Apple Calendar ----------
   const syncWeek = async () => {
@@ -71,21 +95,21 @@ export default function App() {
       ...d,
       blocks: d.blocks.some((x) => x.id === b.id) ? d.blocks.map((x) => (x.id === b.id ? b : x)) : [...d.blocks, b],
       activities: addToBank
-        ? [...d.activities, { id: uid(), name: b.title, color: b.color, duration: b.end - b.start }]
+        ? [...d.activities, { id: uid(), name: b.title, color: b.color, duration: b.end - b.start, ...(b.icon ? { icon: b.icon, iconWeight: b.iconWeight } : {}) }]
         : d.activities,
     }))
 
   const deleteBlock = (id: string) => update((d) => ({ ...d, blocks: d.blocks.filter((b) => b.id !== id) }))
 
   const toTemplateBlocks = (blocks: Block[]): TemplateBlock[] =>
-    blocks.map((b) => ({ day: dates.indexOf(b.date), start: b.start, end: b.end, title: b.title, color: b.color }))
+    blocks.map((b) => ({ day: dates.indexOf(b.date), start: b.start, end: b.end, ...look(b) }))
 
   const placeTemplate = (tbs: TemplateBlock[], replace: boolean) =>
     update((d) => ({
       ...d,
       blocks: [
         ...(replace ? d.blocks.filter((b) => !dates.includes(b.date)) : d.blocks),
-        ...tbs.map((tb) => ({ id: uid(), date: dates[tb.day], start: tb.start, end: tb.end, title: tb.title, color: tb.color })),
+        ...tbs.map((tb) => ({ id: uid(), date: dates[tb.day], start: tb.start, end: tb.end, ...look(tb) })),
       ],
     }))
 
@@ -109,7 +133,7 @@ export default function App() {
     const prev = weekDates(addDays(weekStart, -7))
     const tbs = data!.blocks
       .filter((b) => prev.includes(b.date))
-      .map((b) => ({ day: prev.indexOf(b.date), start: b.start, end: b.end, title: b.title, color: b.color }))
+      .map((b) => ({ day: prev.indexOf(b.date), start: b.start, end: b.end, ...look(b) }))
     applyWithChoice(tbs, 'last week')
   }
 
@@ -127,22 +151,22 @@ export default function App() {
       case 'bank': {
         if (!hit.inside) return null
         const len = d.activity.duration
-        const start = clamp(snap(m - Math.min(15, len / 2)), DAY_START, DAY_END - len)
-        return { date: hit.date, start, end: Math.min(DAY_END, start + len), title: d.activity.name, color: d.activity.color }
+        const start = clamp(snap(m - Math.min(15, len / 2)), MIN_START, MAX_END - len)
+        return { date: hit.date, start, end: Math.min(MAX_END, start + len), ...look(d.activity) }
       }
       case 'move': {
         const len = d.block.end - d.block.start
-        const start = clamp(snap(m - d.grab), DAY_START, DAY_END - len)
+        const start = clamp(snap(m - d.grab), MIN_START, MAX_END - len)
         return { ...d.block, date: hit.date, start, end: start + len }
       }
       case 'resize':
-        return { ...d.block, end: clamp(snap(m), d.block.start + SNAP, DAY_END) }
+        return { ...d.block, end: clamp(snap(m), d.block.start + SNAP, MAX_END) }
       case 'create': {
         const a = snap(d.anchor)
         const b = snap(m)
         const start = Math.min(a, b)
         const end = Math.max(a, b, start + SNAP)
-        return { date: d.date, start, end, title: '', color: '#8A8F98' }
+        return { date: d.date, start, end, title: '', color: PALETTE.cloud }
       }
     }
   }, [])
@@ -165,8 +189,8 @@ export default function App() {
         // a plain click
         if (d.kind === 'move') setEditing({ block: d.block, isNew: false })
         if (d.kind === 'create') {
-          const start = clamp(Math.floor(d.anchor / 30) * 30, DAY_START, DAY_END - 60)
-          setEditing({ block: { id: uid(), date: d.date, start, end: start + 60, title: '', color: '#4A7DFF' }, isNew: true })
+          const start = clamp(Math.floor(d.anchor / 30) * 30, MIN_START, MAX_END - 60)
+          setEditing({ block: { id: uid(), date: d.date, start, end: start + 60, title: '', color: NEW_BLOCK_COLOR }, isNew: true })
         }
         return
       }
@@ -186,7 +210,7 @@ export default function App() {
             update((x) => ({ ...x, blocks: x.blocks.map((b) => (b.id === d.block.id ? { ...b, end: p.end } : b)) }))
           break
         case 'create':
-          setEditing({ block: { id: uid(), date: p.date, start: p.start, end: p.end, title: '', color: '#4A7DFF' }, isNew: true })
+          setEditing({ block: { id: uid(), date: p.date, start: p.start, end: p.end, title: '', color: NEW_BLOCK_COLOR }, isNew: true })
           break
       }
     }
@@ -221,15 +245,15 @@ export default function App() {
 
   if (status.kind === 'load-failed')
     return (
-      <div className="loading">
-        <div className="load-failed">
+      <div className="loading" data-tauri-drag-region>
+        <div className="load-failed panel">
           <h2>Couldn’t open your saved plans</h2>
-          <p className="muted">Nothing has been changed or deleted. Please quit Timetable and open it again. If this keeps happening, the files are in Documents › Timetable Plans (with daily backups).</p>
-          <p className="muted small">{status.message}</p>
+          <p>Nothing was changed or deleted. Quit Timetable and open it again. If this keeps happening, your files and daily backups are in Documents › Timetable Plans.</p>
+          <p className="mono small">{status.message}</p>
         </div>
       </div>
     )
-  if (!data) return <div className="loading">Loading…</div>
+  if (!data) return <div className="loading" data-tauri-drag-region />
 
   const isThisWeek = toISO(weekStart) === toISO(startOfWeek(new Date()))
   const showSyncPrompt =
@@ -240,6 +264,9 @@ export default function App() {
 
   return (
     <div className={'app' + (drag?.active ? ' dragging' : '')}>
+      {/* the native traffic lights sit on top of this band (overlay title bar) */}
+      <div className="titlebar" data-tauri-drag-region />
+      <div className="shell">
       <Sidebar
         activities={data.activities}
         onDragStart={(e, activity) => beginDrag(e, { kind: 'bank', activity })}
@@ -262,14 +289,22 @@ export default function App() {
         <header className="toolbar">
           <div className="nav">
             <button className="btn" disabled={isThisWeek} onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</button>
-            <button className="btn icon" title="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>‹</button>
-            <button className="btn icon" title="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>›</button>
+            <button className="btn square" title="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+              <CaretLeftIcon size={22} weight="bold" />
+            </button>
+            <button className="btn square" title="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+              <CaretRightIcon size={22} weight="bold" />
+            </button>
             <h2 className="week-label">{weekLabel(weekStart)}</h2>
             <SyncButton synced={synced} state={cal.state} onClick={syncWeek} />
           </div>
           <div className="nav">
-            <button className="btn icon" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>↶</button>
-            <button className="btn icon" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo}>↷</button>
+            <button className="btn square" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
+              <ArrowUUpLeftIcon size={22} weight="bold" />
+            </button>
+            <button className="btn square" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo}>
+              <ArrowUUpRightIcon size={22} weight="bold" />
+            </button>
             <TemplatesMenu
               templates={data.templates}
               weekHasBlocks={weekBlocks.length > 0}
@@ -302,7 +337,12 @@ export default function App() {
           blocks={weekBlocks}
           preview={drag?.active ? drag.preview : null}
           hiddenId={hiddenId}
-          events={cal.events}
+          days={dayEvents}
+          range={range}
+          onEarlier={() => setTarget({ top: range.earlierTo })}
+          onHideTop={() => setTarget({ top: DEFAULT_TARGETS.top })}
+          onLater={() => setTarget({ bottom: MAX_END })}
+          onHideBottom={() => setTarget({ bottom: DEFAULT_TARGETS.bottom })}
           hitTestRef={hitTestRef}
           onEmptyDown={(e, date, minute) => beginDrag(e, { kind: 'create', date, anchor: minute })}
           onBlockDown={(e, block, mode) => {
@@ -311,11 +351,14 @@ export default function App() {
           }}
         />
       </main>
+      </div>
 
       {/* floating chip while dragging an activity outside the grid */}
       {drag?.active && drag.kind === 'bank' && !drag.preview && (
         <div className="drag-chip" style={{ left: drag.x, top: drag.y, ['--c' as string]: drag.activity.color }}>
-          <span className="dot" />
+          <span className="icon-disc small">
+            <ActivityIcon name={drag.activity.icon} weight={drag.activity.iconWeight} size={16} fallback={drag.activity.name} />
+          </span>
           {drag.activity.name}
         </div>
       )}
@@ -326,6 +369,7 @@ export default function App() {
           block={editing.block}
           isNew={editing.isNew}
           activities={data.activities}
+          clashes={(dayEvents[dates.indexOf(editing.block.date)]?.timed ?? [])}
           onSave={(b, addToBank) => {
             saveBlock(b, addToBank)
             setEditing(null)

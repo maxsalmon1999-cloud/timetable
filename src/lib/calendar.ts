@@ -1,6 +1,6 @@
 import { invoke, isTauri } from './tauri'
 import { addDays, fromISO } from './dates'
-import { DAY_END, DAY_START } from './constants'
+import { MAX_END, MIN_START } from './constants'
 
 /** An event from Apple Calendar (read-only). start/end are epoch ms. */
 export interface CalEvent {
@@ -64,7 +64,7 @@ export function eventsForDay(events: CalEvent[], date: string) {
     }
     const start = ev.start <= dayStart ? 0 : minutesOf(ev.start)
     const end = ev.end >= dayEnd ? 24 * 60 : minutesOf(ev.end)
-    if (end <= DAY_START || start >= DAY_END) continue // outside the visible hours
+    if (end <= MIN_START || start >= MAX_END) continue // outside the hours the grid can ever show
     timed.push({ id: `${ev.id}|${date}`, title: ev.title, calendar: ev.calendar, color: ev.color, start, end: Math.max(end, start + 15) })
   }
   return { timed, allDay }

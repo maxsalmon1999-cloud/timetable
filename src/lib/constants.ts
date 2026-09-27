@@ -1,23 +1,16 @@
-export const DAY_START = 6 * 60
-export const DAY_END = 24 * 60
-export const SNAP = 15
-export const HOUR_PX = 56
-export const PX_PER_MIN = HOUR_PX / 60
+import { DAY, PALETTE } from './icons'
 
+/** Earliest/latest anything can be placed. The *visible* range is narrower; see lib/dayRange.ts */
+export const MIN_START = DAY.MIN_START
+export const MAX_END = DAY.MAX_END
+export const DEFAULT_START = DAY.DEFAULT_START
+export const DEFAULT_END = DAY.DEFAULT_END
+export const EARLIER_STEP = DAY.EARLIER_STEP
+
+export const SNAP = 15
 export const snap = (min: number) => Math.round(min / SNAP) * SNAP
 
-export const COLORS = [
-  '#4A7DFF', // blue
-  '#2FB36B', // green
-  '#F29B38', // orange
-  '#EF5B7B', // pink
-  '#9B6BE0', // purple
-  '#2BA9BF', // teal
-  '#E0B82E', // yellow
-  '#A0785A', // brown
-  '#E5534B', // red
-  '#8A8F98', // grey
-]
+export const COLORS: string[] = Object.values(PALETTE)
 
 /** preset lengths for activities: 15m, then every half hour up to 5h (anything else is 'Custom') */
 export const DURATIONS = [15, ...Array.from({ length: 10 }, (_, i) => (i + 1) * 30)]

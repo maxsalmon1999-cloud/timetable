@@ -5,6 +5,8 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
+  // ~120 Phosphor icons × 6 weights each; fine for a desktop app loading from disk
+  build: { chunkSizeWarningLimit: 1000 },
   server: {
     port: 1420,
     strictPort: true,
