@@ -1,6 +1,6 @@
 [package]
 name = "timetable"
-version = "0.2.2"
+version = "0.3.0"
 description = "Simple weekly timetable"
 authors = ["Max Salmon"]
 license = ""
