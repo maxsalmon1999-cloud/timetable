@@ -12,7 +12,7 @@ Core ideas:
 1. **Week view** (Mon–Sun, 6:00–24:00, 15-min snapping) where she blocks out time for activities.
 2. **Activity bank** (sidebar) of reusable activities (name, colour, usual length), dragged onto the week.
 3. **Week templates**: save a "regular week" and apply it to upcoming weeks (replace or add).
-4. **Apple Calendar integration**: *deferred* until the prototype is solid (see Roadmap).
+4. **Apple Calendar integration** (read-only): per-week "Sync with Calendar"; events shown on the grid, clashes highlighted.
 
 ## Stack
 
@@ -49,8 +49,15 @@ src/
   components/BlockEditor.tsx / ActivityEditor.tsx  modals
   components/TemplatesMenu.tsx  toolbar dropdown: apply/save/delete templates, copy last week, clear week
   components/Modal.tsx    Modal, Confirm, ColorPicker (no native alert/confirm; unreliable in WKWebView)
+  components/SyncButton.tsx     toolbar button next to the week title: Sync / Syncing… / ✓ synced / ⚠ access off
+  lib/tauri.ts            isTauri + invoke() shared by storage and calendar
+  lib/calendar.ts         CalEvent type, access/fetch wrappers, eventsForDay (split into day/minutes), overlaps(),
+                          sampleEvents() used ONLY in the browser (npm run dev) since EventKit needs the native app
+  lib/useCalendarSync.ts  live events for the visible week if synced: refresh every 2 min + on window focus
 src-tauri/src/storage.rs  load_data / save_data / reveal_data_folder commands (atomic writes, backups, recovery)
-src-tauri/Info.plist      merged into the bundle; NSDocumentsFolderUsageDescription for the Documents prompt
+src-tauri/src/calendar.rs EventKit via objc2-event-kit: calendar_access_status / calendar_request_access /
+                          calendar_events(startMs, endMs) / open_calendar_privacy_settings
+src-tauri/Info.plist      merged into the bundle; usage strings for the Documents + Calendars permission prompts
 ```
 
 ### Data safety (Max's hard requirement: her planning must never be lost)
@@ -67,6 +74,20 @@ src-tauri/Info.plist      merged into the bundle; NSDocumentsFolderUsageDescript
 - `save_data` refuses payloads without `activities`/`blocks`/`templates` arrays.
 - One-off migration: reads the old plugin-store file (`~/Library/Application Support/com.maxsalmon.timetable/timetable.json`,
   shape `{ "data": … }`) if the new folder has nothing.
+
+### Apple Calendar (read-only)
+- EventKit reads whatever Calendar.app on that Mac has (iCloud, Google, Exchange, subscribed). Birthdays calendar skipped.
+- Needs "Full Access" (macOS 14+ `requestFullAccessToEventsWithCompletion`, older `requestAccessToEntityType`).
+  Denied → modal with "Open System Settings" (Privacy & Security → Calendars).
+- `AppData.syncedWeeks` (Monday ISO dates) records which weeks she synced; it's undoable like any change.
+  Events themselves are NOT stored: they're re-read live, so additions/moves/deletions in Calendar show up.
+- Sync prompt: modal on the *current* week when it has no blocks and isn't synced; "Not now" hides it for the session.
+- Conflicts: a block overlapping a timed event gets a red ring + ⚠ (tooltip lists the clashes); the event gets a ring too.
+  Both are laid out side by side via layoutLanes. Nothing is blocked or removed.
+- All-day events show in an "all-day" row under the day headers; they never count as conflicts.
+- Timed events entirely outside 6:00–24:00 aren't shown.
+- The bundle is ad-hoc signed (`bundle.macOS.signingIdentity: "-"`) so macOS permissions attach to `com.maxsalmon.timetable`.
+  Because it's ad-hoc, each new build may re-ask for Calendar/Documents access.
 
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
@@ -94,16 +115,16 @@ src-tauri/Info.plist      merged into the bundle; NSDocumentsFolderUsageDescript
 - [x] Tauri release build (`.app` 10 MB, `.dmg` 3 MB, Apple Silicon), launches, writes `timetable.json` via store plugin
 - [ ] Drag/drop feel inside the native WKWebView not yet hand-tested by a human
 - [ ] "Restored from backup" notice not yet seen in the native window (logic verified via files)
+- [x] Apple Calendar: sync button + current-week prompt, live refresh, all-day row, conflict highlighting (UI verified in
+      browser with sample events; native EventKit build compiles/signs; real-calendar read awaiting Max clicking Allow)
 
 ## Roadmap / ideas (rough priority)
 
 1. Hand-test the native app (drag feel in WKWebView, reopen app → data still there). Get her feedback.
 2. Get it onto her Mac: unsigned `.dmg` needs right-click → Open (or `xattr -cr`) the first time.
    Proper fix: Apple Developer ID signing + notarisation (needs a paid Apple developer account).
-3. **Apple Calendar (read-only first)**: EventKit via Rust (`objc2-event-kit` crate) behind a Tauri
-   command `list_events(start, end)`, rendered as non-editable striped blocks on the grid.
-   Needs `NSCalendarsFullAccessUsageDescription` in Info.plist and a permission prompt.
-   Later maybe: export/push blocks to a dedicated "Timetable" calendar.
+3. Calendar follow-ups if she wants them: choose which calendars to show, "stop syncing this week",
+   click an event to see details / open it in Calendar.app, optionally write blocks back to a "Timetable" calendar.
 4. Closing mid-save: saves are immediate + atomic, so at worst the very last action is lost on ⌘Q. Could add a
    close-requested handler that awaits the save queue if this ever matters.
 5. Small niceties if she asks: weekly totals per activity, notes on blocks, configurable day start/end,
@@ -117,3 +138,5 @@ src-tauri/Info.plist      merged into the bundle; NSDocumentsFolderUsageDescript
 - **2026-09-27**: Data safety overhaul: replaced tauri-plugin-store with Rust storage commands (atomic writes,
   daily backups ×60, damaged-file recovery, no-save-after-failed-load), data moved to `~/Documents/Timetable Plans/`,
   save indicator + "Show files". Activity length presets now 15m + half-hour steps to 5h + Custom.
+- **2026-09-27**: Apple Calendar integration (read-only, EventKit): per-week sync button, prompt on blank current week,
+  live refresh (2 min + focus), all-day row, conflict highlighting. Bundle now ad-hoc signed with its bundle id.

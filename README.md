@@ -11,7 +11,10 @@ activities, save it as a template, and stamp it onto upcoming weeks.
 - **Click a block** to rename, recolour, change its times or delete it.
 - **Week templates ▾**: save the current week as a template, apply a template to the
   week you're viewing, copy last week, or clear the week.
+- **Sync with Calendar** (next to the week title) shows that week's Apple Calendar events. They keep
+  updating by themselves; anything of yours that clashes with an event gets a red outline and ⚠.
 - ⌘Z / ⇧⌘Z undo and redo.
+- Your plans are saved automatically in Documents › Timetable Plans, with a daily backup.
 
 ## Development
 

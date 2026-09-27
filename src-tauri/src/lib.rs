@@ -1,3 +1,4 @@
+mod calendar;
 mod storage;
 
 use tauri::Manager;
@@ -19,7 +20,11 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       storage::load_data,
       storage::save_data,
-      storage::reveal_data_folder
+      storage::reveal_data_folder,
+      calendar::calendar_access_status,
+      calendar::calendar_request_access,
+      calendar::calendar_events,
+      calendar::open_calendar_privacy_settings
     ])
     .run(tauri::generate_context!())
     .expect("error while building tauri application");

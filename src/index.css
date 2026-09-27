@@ -168,7 +168,6 @@ kbd { font-family: inherit; border: 1px solid var(--line); border-radius: 4px; p
   position: sticky;
   top: 0;
   z-index: 5;
-  display: flex;
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
@@ -322,3 +321,46 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px c
 .load-failed { max-width: 420px; text-align: center; padding: 24px; line-height: 1.5; }
 .load-failed h2 { font-size: 17px; color: var(--text); margin-bottom: 8px; }
 .small { font-size: 11px; }
+
+/* ---------- Apple Calendar ---------- */
+.btn.sync { margin-left: 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+.btn.sync.ok { color: #2a9d5c; border-color: color-mix(in srgb, #2fb36b 40%, var(--line)); }
+.btn.sync.warn { color: var(--danger); }
+
+.head-row { display: flex; }
+.allday-row { border-top: 1px solid var(--line-faint); }
+.allday-label { font-size: 10px; color: var(--muted); text-align: right; padding: 5px 8px 0 0; }
+.allday-cell { flex: 1; min-width: 0; padding: 3px 2px; display: flex; flex-direction: column; gap: 2px; border-left: 1px solid var(--line); }
+.allday-event {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--c) 18%, var(--bg));
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-event {
+  position: absolute;
+  z-index: 1;
+  border-radius: 6px;
+  padding: 3px 7px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.3;
+  cursor: default;
+  border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--c) 12%, var(--bg)) 0 6px,
+    color-mix(in srgb, var(--c) 22%, var(--bg)) 6px 12px
+  );
+}
+.cal-event.short .block-title, .cal-event.short .block-time { display: inline; }
+.cal-event.short .block-time { margin-left: 6px; }
+.cal-event.short { padding-top: 1px; }
+
+.block.conflict, .cal-event.conflict { box-shadow: 0 0 0 2px var(--danger); }
+.clash-icon { color: var(--danger); }

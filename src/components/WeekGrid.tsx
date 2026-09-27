@@ -3,6 +3,7 @@ import type { Block } from '../lib/types'
 import { DAY_END, DAY_START, HOUR_PX, PX_PER_MIN } from '../lib/constants'
 import { fmtTime, fromISO, toISO } from '../lib/dates'
 import { layoutLanes } from '../lib/layout'
+import { eventsForDay, overlaps, type CalEvent, type DayEvent } from '../lib/calendar'
 
 export interface Hit {
   date: string
@@ -24,6 +25,8 @@ interface Props {
   blocks: Block[]
   preview: Preview | null
   hiddenId: string | null
+  /** Apple Calendar events for this week (empty when the week isn't synced) */
+  events: CalEvent[]
   hitTestRef: RefObject<HitTest | null>
   onEmptyDown: (e: RPointerEvent, date: string, minute: number) => void
   onBlockDown: (e: RPointerEvent, block: Block, mode: 'move' | 'resize') => void
@@ -32,7 +35,7 @@ interface Props {
 const HOURS = Array.from({ length: (DAY_END - DAY_START) / 60 }, (_, i) => DAY_START / 60 + i)
 const HEIGHT = (DAY_END - DAY_START) * PX_PER_MIN
 
-export function WeekGrid({ dates, blocks, preview, hiddenId, hitTestRef, onEmptyDown, onBlockDown }: Props) {
+export function WeekGrid({ dates, blocks, preview, hiddenId, events, hitTestRef, onEmptyDown, onBlockDown }: Props) {
   const colsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const now = useNow()
@@ -57,20 +60,38 @@ export function WeekGrid({ dates, blocks, preview, hiddenId, hitTestRef, onEmpty
   }, [])
 
   const nowMin = now.getHours() * 60 + now.getMinutes()
+  const days = dates.map((d) => eventsForDay(events, d))
+  const hasAllDay = days.some((d) => d.allDay.length > 0)
 
   return (
     <div className="grid-scroll" ref={scrollRef}>
       <div className="grid-head">
-        <div className="gutter" />
-        {dates.map((d) => {
-          const dt = fromISO(d)
-          return (
-            <div key={d} className={'day-head' + (d === today ? ' today' : '')}>
-              <span className="dow">{dt.toLocaleDateString(undefined, { weekday: 'short' })}</span>
-              <span className="dom">{dt.getDate()}</span>
-            </div>
-          )
-        })}
+        <div className="head-row">
+          <div className="gutter" />
+          {dates.map((d) => {
+            const dt = fromISO(d)
+            return (
+              <div key={d} className={'day-head' + (d === today ? ' today' : '')}>
+                <span className="dow">{dt.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                <span className="dom">{dt.getDate()}</span>
+              </div>
+            )
+          })}
+        </div>
+        {hasAllDay && (
+          <div className="head-row allday-row">
+            <div className="gutter allday-label">all-day</div>
+            {days.map(({ allDay }, i) => (
+              <div key={dates[i]} className="allday-cell">
+                {allDay.map((ev) => (
+                  <div key={ev.id} className="allday-event" style={{ ['--c' as string]: ev.color }} title={`${ev.title}\n${ev.calendar}`}>
+                    {ev.title}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid-body" style={{ height: HEIGHT }}>
@@ -83,9 +104,14 @@ export function WeekGrid({ dates, blocks, preview, hiddenId, hitTestRef, onEmpty
         </div>
 
         <div className="cols" ref={colsRef} style={{ backgroundSize: `100% ${HOUR_PX}px` }}>
-          {dates.map((d) => {
+          {dates.map((d, i) => {
             const dayBlocks = blocks.filter((b) => b.date === d && b.id !== hiddenId)
-            const lanes = layoutLanes(dayBlocks)
+            const dayEvents = days[i].timed
+            const lanes = layoutLanes<{ id: string; start: number; end: number }>([...dayBlocks, ...dayEvents])
+            const laneStyle = (id: string) => {
+              const { lane, lanes: n } = lanes.get(id)!
+              return { left: `calc(${(lane / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }
+            }
             return (
               <div
                 key={d}
@@ -96,17 +122,18 @@ export function WeekGrid({ dates, blocks, preview, hiddenId, hitTestRef, onEmpty
                   if (hit) onEmptyDown(e, d, hit.minute)
                 }}
               >
-                {dayBlocks.map((b) => {
-                  const { lane, lanes: n } = lanes.get(b.id)!
-                  return (
-                    <BlockView
-                      key={b.id}
-                      block={b}
-                      style={{ left: `calc(${(lane / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }}
-                      onDown={(e, mode) => onBlockDown(e, b, mode)}
-                    />
-                  )
-                })}
+                {dayEvents.map((ev) => (
+                  <EventView key={ev.id} event={ev} style={laneStyle(ev.id)} conflict={dayBlocks.some((b) => overlaps(b, ev))} />
+                ))}
+                {dayBlocks.map((b) => (
+                  <BlockView
+                    key={b.id}
+                    block={b}
+                    style={laneStyle(b.id)}
+                    conflicts={dayEvents.filter((ev) => overlaps(b, ev))}
+                    onDown={(e, mode) => onBlockDown(e, b, mode)}
+                  />
+                ))}
                 {preview && preview.date === d && (
                   <BlockView block={{ ...preview, id: 'preview' }} ghost style={{ left: 2, right: 2 }} />
                 )}
@@ -126,18 +153,22 @@ function BlockView({
   block,
   style,
   ghost,
+  conflicts = [],
   onDown,
 }: {
   block: Block
   style: React.CSSProperties
   ghost?: boolean
+  conflicts?: DayEvent[]
   onDown?: (e: RPointerEvent, mode: 'move' | 'resize') => void
 }) {
   const height = (block.end - block.start) * PX_PER_MIN
   const short = block.end - block.start <= 30
+  const clash = conflicts.length > 0
   return (
     <div
-      className={'block' + (ghost ? ' ghost' : '') + (short ? ' short' : '')}
+      className={'block' + (ghost ? ' ghost' : '') + (short ? ' short' : '') + (clash ? ' conflict' : '')}
+      title={clash ? `Clashes with: ${conflicts.map((c) => `${c.title} (${fmtTime(c.start)}–${fmtTime(c.end)})`).join(', ')}` : undefined}
       style={{
         ...style,
         top: (block.start - DAY_START) * PX_PER_MIN,
@@ -150,7 +181,10 @@ function BlockView({
         onDown(e, 'move')
       }}
     >
-      <div className="block-title">{block.title || 'Untitled'}</div>
+      <div className="block-title">
+        {clash && <span className="clash-icon">⚠ </span>}
+        {block.title || 'Untitled'}
+      </div>
       <div className="block-time">
         {fmtTime(block.start)} – {fmtTime(block.end)}
       </div>
@@ -164,6 +198,24 @@ function BlockView({
           }}
         />
       )}
+    </div>
+  )
+}
+
+function EventView({ event, style, conflict }: { event: DayEvent; style: React.CSSProperties; conflict: boolean }) {
+  const short = event.end - event.start <= 30
+  const start = Math.max(event.start, DAY_START)
+  return (
+    <div
+      className={'cal-event' + (short ? ' short' : '') + (conflict ? ' conflict' : '')}
+      style={{ ...style, top: (start - DAY_START) * PX_PER_MIN, height: (event.end - start) * PX_PER_MIN, ['--c' as string]: event.color }}
+      title={`${event.title}\n${event.calendar} · ${fmtTime(event.start)}–${fmtTime(event.end)}\nFrom Apple Calendar (edit it there)`}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <div className="block-title">{event.title}</div>
+      <div className="block-time">
+        {fmtTime(event.start)} – {fmtTime(event.end)}
+      </div>
     </div>
   )
 }

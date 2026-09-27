@@ -4,5 +4,9 @@
 <dict>
   <key>NSDocumentsFolderUsageDescription</key>
   <string>Timetable keeps your plans and daily backups in Documents › Timetable Plans so they're safe if the app or your Mac shuts down.</string>
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>Timetable shows your calendar events on your week so you can plan around them. It never changes your calendars.</string>
+  <key>NSCalendarsUsageDescription</key>
+  <string>Timetable shows your calendar events on your week so you can plan around them. It never changes your calendars.</string>
 </dict>
 </plist>

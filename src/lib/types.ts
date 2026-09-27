@@ -37,4 +37,6 @@ export interface AppData {
   activities: Activity[]
   blocks: Block[]
   templates: Template[]
+  /** Monday (YYYY-MM-DD) of each week she chose to sync with Apple Calendar */
+  syncedWeeks?: string[]
 }

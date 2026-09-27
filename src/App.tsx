@@ -9,6 +9,9 @@ import { BlockEditor } from './components/BlockEditor'
 import { TemplatesMenu } from './components/TemplatesMenu'
 import { Confirm } from './components/Modal'
 import { revealDataFolder } from './lib/storage'
+import { accessStatus, openPrivacySettings, requestAccess } from './lib/calendar'
+import { useCalendarSync } from './lib/useCalendarSync'
+import { SyncButton } from './components/SyncButton'
 
 type DragKind =
   | { kind: 'bank'; activity: Activity }
@@ -30,12 +33,34 @@ export default function App() {
   const [editing, setEditing] = useState<Editing | null>(null)
   const [confirming, setConfirming] = useState<Confirming | null>(null)
   const [restoreNoticeSeen, setRestoreNoticeSeen] = useState(false)
+  const [syncPromptDismissed, setSyncPromptDismissed] = useState<string | null>(null)
   const hitTestRef = useRef<HitTest | null>(null)
   const dragRef = useRef<Drag | null>(null)
   dragRef.current = drag
 
   const dates = useMemo(() => weekDates(weekStart), [weekStart])
   const weekBlocks = useMemo(() => (data ? data.blocks.filter((b) => dates.includes(b.date)) : []), [data, dates])
+  const weekKey = dates[0]
+  const synced = !!data?.syncedWeeks?.includes(weekKey)
+  const cal = useCalendarSync(weekStart, synced)
+
+  // ---------- Apple Calendar ----------
+  const syncWeek = async () => {
+    let access = await accessStatus()
+    if (access === 'notDetermined') access = (await requestAccess()) ? 'granted' : 'denied'
+    if (access !== 'granted') {
+      setConfirming({
+        title: 'Timetable can’t see your calendars',
+        message:
+          'To show your Apple Calendar events here, open System Settings → Privacy & Security → Calendars, switch Timetable on (Full Access), then press Sync again.',
+        cancelLabel: 'Close',
+        actions: [{ label: 'Open System Settings', kind: 'primary', run: openPrivacySettings }],
+      })
+      return
+    }
+    if (synced) cal.refresh()
+    else update((d) => ({ ...d, syncedWeeks: [...(d.syncedWeeks ?? []), weekKey] }))
+  }
 
   // ---------- data operations ----------
   const saveBlock = (b: Block, addToBank: boolean) =>
@@ -204,6 +229,9 @@ export default function App() {
   if (!data) return <div className="loading">Loading…</div>
 
   const isThisWeek = toISO(weekStart) === toISO(startOfWeek(new Date()))
+  const showSyncPrompt =
+    isThisWeek && !synced && weekBlocks.length === 0 && syncPromptDismissed !== weekKey &&
+    !editing && !confirming && !(restoredFrom && !restoreNoticeSeen)
   // while moving/resizing, hide the original so only the preview shows
   const hiddenId = drag?.active && drag.preview && (drag.kind === 'move' || drag.kind === 'resize') ? drag.block.id : null
 
@@ -231,6 +259,7 @@ export default function App() {
             <button className="btn icon" title="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>‹</button>
             <button className="btn icon" title="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>›</button>
             <h2 className="week-label">{weekLabel(weekStart)}</h2>
+            <SyncButton synced={synced} state={cal.state} onClick={syncWeek} />
           </div>
           <div className="nav">
             <button className="btn icon" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>↶</button>
@@ -267,6 +296,7 @@ export default function App() {
           blocks={weekBlocks}
           preview={drag?.active ? drag.preview : null}
           hiddenId={hiddenId}
+          events={cal.events}
           hitTestRef={hitTestRef}
           onEmptyDown={(e, date, minute) => beginDrag(e, { kind: 'create', date, anchor: minute })}
           onBlockDown={(e, block, mode) => {
@@ -308,6 +338,15 @@ export default function App() {
           cancelLabel="OK"
           actions={[{ label: 'Show files', run: () => revealDataFolder() }]}
           onClose={() => setRestoreNoticeSeen(true)}
+        />
+      )}
+      {showSyncPrompt && (
+        <Confirm
+          title="Sync this week with Apple Calendar?"
+          message="Bring in this week’s events from your Calendar so you can plan around them. Anything added to your Calendar later in the week will appear here too."
+          cancelLabel="Not now"
+          actions={[{ label: 'Sync with Calendar', kind: 'primary', run: syncWeek }]}
+          onClose={() => setSyncPromptDismissed(weekKey)}
         />
       )}
       {confirming && <Confirm {...confirming} onClose={() => setConfirming(null)} />}
