@@ -1,4 +1,4 @@
-import { useState, type PointerEvent as RPointerEvent } from 'react'
+import { useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import type { Activity } from '../lib/types'
 import { fmtDuration } from '../lib/dates'
 import { ActivityEditor } from './ActivityEditor'
@@ -14,9 +14,12 @@ interface Props {
   saveStatus: SaveStatus
   folder: string | null
   onRetrySave: () => void
+  version: string | null
+  /** shown just above the save status (e.g. the update notice) */
+  children?: ReactNode
 }
 
-export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus, folder, onRetrySave }: Props) {
+export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus, folder, onRetrySave, version, children }: Props) {
   const [editing, setEditing] = useState<Activity | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Activity | null>(null)
 
@@ -49,7 +52,9 @@ export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus,
         <p><b>Click a block</b> to rename, recolour or delete.</p>
       </div>
 
+      {children}
       <SaveIndicator status={saveStatus} folder={folder} onRetry={onRetrySave} />
+      {version && <div className="version">Version {version}</div>}
 
       {editing && (
         <ActivityEditor

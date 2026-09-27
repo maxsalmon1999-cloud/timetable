@@ -42,6 +42,15 @@
     "macOS": {
       "minimumSystemVersion": "11.0",
       "signingIdentity": "-"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM3MUMxMTJBRTg1NTU4RjAKUldUd1dGWG9LaEVjTjFxRmhITCtsNTNWUUtpakpMN0ZoYU0yTytScy9hRVF5UHIrNUg5Y2grckwK",
+      "endpoints": [
+        "https://github.com/maxsalmon1999-cloud/timetable/releases/latest/download/latest.json"
+      ]
     }
   }
 }

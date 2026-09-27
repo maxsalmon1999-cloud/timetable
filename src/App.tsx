@@ -12,6 +12,8 @@ import { revealDataFolder } from './lib/storage'
 import { accessStatus, openPrivacySettings, requestAccess } from './lib/calendar'
 import { useCalendarSync } from './lib/useCalendarSync'
 import { SyncButton } from './components/SyncButton'
+import { UpdateNotice } from './components/UpdateNotice'
+import { useUpdater } from './lib/useUpdater'
 
 type DragKind =
   | { kind: 'bank'; activity: Activity }
@@ -43,6 +45,7 @@ export default function App() {
   const weekKey = dates[0]
   const synced = !!data?.syncedWeeks?.includes(weekKey)
   const cal = useCalendarSync(weekStart, synced)
+  const updater = useUpdater()
 
   // ---------- Apple Calendar ----------
   const syncWeek = async () => {
@@ -250,7 +253,10 @@ export default function App() {
         saveStatus={status}
         folder={folder}
         onRetrySave={retrySave}
-      />
+        version={updater.version}
+      >
+        <UpdateNotice state={updater.state} canRestart={status.kind === 'saved'} onRestart={updater.restart} />
+      </Sidebar>
 
       <main className="main">
         <header className="toolbar">
