@@ -20,7 +20,8 @@ Core ideas:
 - Desktop shell: Tauri 2 (`src-tauri/`), bundle id `com.maxsalmon.timetable`, targets `.app` + `.dmg`.
 - Persistence: custom Rust commands in `src-tauri/src/storage.rs` (no store plugin), see "Data safety" below.
   Falls back to `localStorage` (`timetable-data-v1`) when running in a plain browser (`npm run dev`).
-- Toolchain on Max's Mac: Node 26, Rust 1.98 (Homebrew), Xcode Command Line Tools only (no full Xcode).
+- Toolchain on Max's Mac (Apple Silicon): Node 26, Rust 1.98 (Homebrew `rust` for dev; Homebrew `rustup` stable with
+  x86_64 + aarch64 targets for universal release builds), Xcode Command Line Tools only (no full Xcode).
 - Repo: GitHub `maxsalmon1999-cloud/timetable` (public; made public 2026-09-27 so releases can serve auto-updates). Never commit secrets or her data.
 
 ## Commands
@@ -101,8 +102,10 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **Updater signing key: `~/.tauri/timetable.key` (no password) on Max's Mac, NEVER in the repo.** Public key is in
   tauri.conf.json. If the private key is lost, her installed app can't accept updates; she'd need one manual reinstall of a
   build with a new key. Max should keep a backup of it (password manager).
-- Builds are Apple Silicon only (`darwin-aarch64`); Homebrew Rust has no x86_64 target. An Intel Mac would need rustup +
-  a universal build.
+- **Her Mac is Intel.** Releases are universal builds (`--target universal-apple-darwin`, x86_64 + arm64), listed in
+  latest.json under both `darwin-x86_64` and `darwin-aarch64`. This needs rustup (`brew install rustup`, keg-only at
+  `/opt/homebrew/opt/rustup/bin`, deliberately not on PATH) with both targets; release.mjs prepends it to PATH itself.
+  Everyday `npm run app:dev/app:build` still use Homebrew `rust` and build for the host only.
 - Updates are only ad-hoc signed, so macOS may re-ask for Calendar/Documents access after an update.
 - **Every release must read existing data files.** If the data shape changes, bump `AppData.version` and migrate on load;
   never ship something that can't open her current `timetable.json`.
@@ -161,3 +164,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   live refresh (2 min + focus), all-day row, conflict highlighting. Bundle now ad-hoc signed with its bundle id.
 - **2026-09-27**: Repo made public. Auto-updates via tauri-plugin-updater + GitHub Releases; `npm run release`; version
   shown in sidebar. Released v0.2.0 (first with updater) and v0.2.1 (update test, no changes).
+- **2026-09-27**: Her Mac is Intel → releases are now universal (Intel + Apple Silicon) via rustup; v0.2.2.
