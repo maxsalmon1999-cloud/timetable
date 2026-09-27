@@ -21,7 +21,7 @@ Core ideas:
 - Persistence: custom Rust commands in `src-tauri/src/storage.rs` (no store plugin), see "Data safety" below.
   Falls back to `localStorage` (`timetable-data-v1`) when running in a plain browser (`npm run dev`).
 - Toolchain on Max's Mac: Node 26, Rust 1.98 (Homebrew), Xcode Command Line Tools only (no full Xcode).
-- Repo: GitHub `maxsalmon1999-cloud/timetable` (private).
+- Repo: GitHub `maxsalmon1999-cloud/timetable` (public; made public 2026-09-27 so releases can serve auto-updates). Never commit secrets or her data.
 
 ## Commands
 
