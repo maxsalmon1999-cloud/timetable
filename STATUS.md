@@ -30,6 +30,7 @@ Core ideas:
 | `npm run dev` | browser-only dev server on http://localhost:1420 |
 | `npm run app:dev` | Tauri window with HMR |
 | `npm run app:build` | release `.app` + `.dmg` in `src-tauri/target/release/bundle/{macos,dmg}/` |
+| `npm run release [-- patch\|minor\|major\|x.y.z "notes"]` | ship an update to her (see "Releases & auto-update") |
 | `npx tsc -b` / `npx oxlint` | typecheck / lint |
 
 ## Code map
@@ -89,6 +90,24 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - The bundle is ad-hoc signed (`bundle.macOS.signingIdentity: "-"`) so macOS permissions attach to `com.maxsalmon.timetable`.
   Because it's ad-hoc, each new build may re-ask for Calendar/Documents access.
 
+### Releases & auto-update
+- Her app checks `https://github.com/maxsalmon1999-cloud/timetable/releases/latest/download/latest.json` 5 s after
+  launch and every 6 h (`src/lib/useUpdater.ts`, production builds only). A newer version is downloaded, signature-checked
+  and installed silently; the sidebar then offers "Restart now" (enabled once changes are saved). Ignored → used next launch.
+- `npm run release` (scripts/release.mjs): needs clean tree on `main` + `gh` login + key. Bumps version in
+  tauri.conf.json/package.json/Cargo.toml, builds, signs the updater tarball, commits "Release vX", tags, pushes, and
+  creates a GitHub release with `Timetable.app.tar.gz` (+ `.sig`), `Timetable.dmg`, `latest.json`.
+- Fresh install link (always the newest): https://github.com/maxsalmon1999-cloud/timetable/releases/latest/download/Timetable.dmg
+- **Updater signing key: `~/.tauri/timetable.key` (no password) on Max's Mac, NEVER in the repo.** Public key is in
+  tauri.conf.json. If the private key is lost, her installed app can't accept updates; she'd need one manual reinstall of a
+  build with a new key. Max should keep a backup of it (password manager).
+- Builds are Apple Silicon only (`darwin-aarch64`); Homebrew Rust has no x86_64 target. An Intel Mac would need rustup +
+  a universal build.
+- Updates are only ad-hoc signed, so macOS may re-ask for Calendar/Documents access after an update.
+- **Every release must read existing data files.** If the data shape changes, bump `AppData.version` and migrate on load;
+  never ship something that can't open her current `timetable.json`.
+- Verified end-to-end 2026-09-27: a v0.2.0 copy updated itself to v0.2.1 within ~10 s of launch, signature intact.
+
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
   so editing or deleting an activity never changes existing blocks.
@@ -121,8 +140,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 ## Roadmap / ideas (rough priority)
 
 1. Hand-test the native app (drag feel in WKWebView, reopen app → data still there). Get her feedback.
-2. Get it onto her Mac: unsigned `.dmg` needs right-click → Open (or `xattr -cr`) the first time.
-   Proper fix: Apple Developer ID signing + notarisation (needs a paid Apple developer account).
+2. Get it onto her Mac: install the latest `Timetable.dmg` (link above); unsigned, so right-click → Open the first time.
+   Proper fix: Apple Developer ID signing + notarisation (paid Apple developer account); would also stop permission re-prompts.
 3. Calendar follow-ups if she wants them: choose which calendars to show, "stop syncing this week",
    click an event to see details / open it in Calendar.app, optionally write blocks back to a "Timetable" calendar.
 4. Closing mid-save: saves are immediate + atomic, so at worst the very last action is lost on ⌘Q. Could add a
@@ -140,3 +159,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   save indicator + "Show files". Activity length presets now 15m + half-hour steps to 5h + Custom.
 - **2026-09-27**: Apple Calendar integration (read-only, EventKit): per-week sync button, prompt on blank current week,
   live refresh (2 min + focus), all-day row, conflict highlighting. Bundle now ad-hoc signed with its bundle id.
+- **2026-09-27**: Repo made public. Auto-updates via tauri-plugin-updater + GitHub Releases; `npm run release`; version
+  shown in sidebar. Released v0.2.0 (first with updater) and v0.2.1 (update test, no changes).
