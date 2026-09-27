@@ -50,4 +50,9 @@ export interface AppData {
   templates: Template[]
   /** Monday (YYYY-MM-DD) of each week she chose to sync with Apple Calendar */
   syncedWeeks?: string[]
+  /**
+   * A template being built from scratch ("Create a template"). While present, the grid shows a blank
+   * week and every block edit goes here instead of `blocks`. Dates are placeholders: TEMPLATE_DATES.
+   */
+  templateDraft?: { blocks: Block[] }
 }

@@ -12,7 +12,8 @@ Core ideas:
 1. **Week view** (Mon–Sun, 15-min snapping) that always fits the window with no scrolling: 9:00–22:00 by default,
    widening automatically for earlier/later items, plus "+ Earlier" / "+ Later" rows.
 2. **Activity bank** (sidebar) of reusable activities (name, colour, usual length), dragged onto the week.
-3. **Week templates**: save a "regular week" and apply it to upcoming weeks (replace or add).
+3. **Week templates**: save a "regular week" and apply it to upcoming weeks (replace or add), or build one from a
+   blank week ("Create a template").
 4. **Apple Calendar integration** (read-only): per-week "Sync with Calendar"; events shown on the grid, clashes highlighted.
 
 ## Stack
@@ -122,6 +123,15 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   never ship something that can't open her current `timetable.json`.
 - Verified end-to-end 2026-09-27: a v0.2.0 copy updated itself to v0.2.1 within ~10 s of launch, signature intact.
 
+### Creating a template from scratch
+- Week templates ▾ → "Create a template" sets `AppData.templateDraft = { blocks: [] }`. While it exists the app is in
+  template mode: grid shows a blank Mon–Sun (weekday names only, no today/now line, no calendar events), toolbar becomes
+  name field + Undo/Redo + Cancel + Save template (needs a name and ≥1 block).
+- Draft blocks use placeholder dates `TEMPLATE_DATES` (week of Mon 1 Jan 2001, lib/dates.ts); every block edit goes
+  through `withBlocks()` in App.tsx, which targets the draft when present, else `blocks`.
+- The draft is part of saved data, so it's undoable and survives a crash/restart (app reopens in template mode).
+  The name is UI state only (blank after restart). Save → `templates` gets it, draft removed. Cancel with blocks → confirm.
+
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
   so editing or deleting an activity never changes existing blocks.
@@ -160,6 +170,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - [x] Persistence: native app tested for migration, corrupt-file recovery, deleted-file recovery, backup pruning (60)
 - [x] Save status indicator in sidebar + "Show files" (opens the data folder in Finder)
 - [x] Activity lengths: 15m, then 30m steps up to 5h, plus "Custom…" (hours + 0/15/30/45 minutes)
+- [x] "Create a template" from a blank week (browser-tested: build, save, apply, restart with draft, discard)
 - [x] 2026-09-27 redesign implemented per handoff: tokens, fonts, Phosphor icons, fit-to-height grid with
       Earlier/Later + auto-widen note, icon library, data v2 migration (verified on a real v1 file on disk), new app icon,
       overlay title bar. Verified in browser at 1440×900 and 1100×680; drag/move/resize/create, templates (icons carried),
@@ -199,3 +210,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   DM Mono, Phosphor icons, activity icons + searchable icon library, student starter activities, fit-to-height 9:00–22:00
   day that auto-widens (+ Earlier / + Later), data v2 (pastel colours, icon fields) with v1 migration, new app icon,
   overlay title bar. Not yet released.
+- **2026-09-27**: "Create a template" builds a template on a blank week (`templateDraft`). Not yet released.

@@ -21,6 +21,9 @@ export function startOfWeek(d: Date) {
 
 export const weekDates = (weekStart: Date) => Array.from({ length: 7 }, (_, i) => toISO(addDays(weekStart, i)))
 
+/** Placeholder Monday–Sunday for template drafts (1 Jan 2001 was a Monday); never shown to her */
+export const TEMPLATE_DATES = weekDates(new Date(2001, 0, 1))
+
 export const fmtTime = (min: number) => `${Math.floor(min / 60)}:${pad(min % 60)}`
 
 export function fmtDuration(min: number) {

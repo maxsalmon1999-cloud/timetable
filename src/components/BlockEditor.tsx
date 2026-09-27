@@ -16,6 +16,7 @@ export function BlockEditor({
   block,
   isNew,
   activities,
+  weekdayOnly,
   clashes,
   onSave,
   onDelete,
@@ -24,6 +25,8 @@ export function BlockEditor({
   block: Block
   isNew: boolean
   activities: Activity[]
+  /** template drafts have no real dates: just say "Monday" */
+  weekdayOnly?: boolean
   /** this day's timed calendar events */
   clashes: DayEvent[]
   onSave: (b: Block, addToBank: boolean) => void
@@ -50,7 +53,7 @@ export function BlockEditor({
     )
   }
 
-  const day = fromISO(block.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+  const day = fromISO(block.date).toLocaleDateString('en-GB', weekdayOnly ? { weekday: 'long' } : { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <>

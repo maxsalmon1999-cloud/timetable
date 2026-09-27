@@ -488,6 +488,24 @@ input:focus, select:focus { box-shadow: 0 0 0 4px var(--lilac); }
 .main { container-type: inline-size; }
 @container (max-width: 880px) {
   .toolbar .btn-label { display: none; }
+  .mode-pill { padding: 0 11px; }
   .toolbar .btn:has(.btn-label) { padding: 0 11px; }
   .week-label { font-size: 24px; margin-left: 4px; }
 }
+
+/* template-building mode */
+.mode-pill {
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  background: var(--lemon);
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--r-control);
+  font: 800 15px var(--font);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+input.template-name { height: 44px; width: 300px; min-width: 140px; flex-shrink: 1; }
+.grid-card.blank .day-head .dow { font-size: 16px; font-weight: 800; }

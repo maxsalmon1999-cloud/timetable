@@ -31,6 +31,8 @@ export interface DayEvents {
 }
 
 interface Props {
+  /** a template being built: weekday names only, no dates / today / now line */
+  blank?: boolean
   dates: string[]
   blocks: Block[]
   preview: Preview | null
@@ -65,7 +67,7 @@ export function WeekGrid(p: Props) {
   const colWidth = useSize(colsEl).width / 7
   const iconMin = colWidth >= NARROW_COL_PX ? ICON_PX : ICON_PX_NARROW
   const now = useNow()
-  const today = toISO(now)
+  const today = p.blank ? '' : toISO(now)
   const { start, end } = range
   // the whole visible day always fits: hours get shorter instead of scrolling
   const ppm = bodyHeight / (end - start)
@@ -89,7 +91,7 @@ export function WeekGrid(p: Props) {
   const hasAllDay = days.some((d) => d.allDay.length > 0)
 
   return (
-    <div className="grid-card panel">
+    <div className={"grid-card panel" + (p.blank ? " blank" : "")}>
       <div className="grid-head">
         <div />
         {dates.map((d) => {
@@ -98,7 +100,7 @@ export function WeekGrid(p: Props) {
             <div key={d} className="day-head-cell">
               <div className={'day-head' + (d === today ? ' today' : '')}>
                 <span className="dow">{dt.toLocaleDateString('en-GB', { weekday: 'short' })}</span>
-                <span className="dom">{dt.getDate()}</span>
+                {!p.blank && <span className="dom">{dt.getDate()}</span>}
               </div>
             </div>
           )

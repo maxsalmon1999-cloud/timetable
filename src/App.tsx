@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type PointerEvent as RPointerEvent } from 'react'
 import { useAppData } from './lib/store'
-import type { Activity, Block, Template, TemplateBlock } from './lib/types'
+import type { Activity, AppData, Block, Template, TemplateBlock } from './lib/types'
 import { MAX_END, MIN_START, SNAP, snap, uid } from './lib/constants'
-import { addDays, fmtTime, startOfWeek, toISO, weekDates, weekLabel } from './lib/dates'
+import { addDays, fmtTime, startOfWeek, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
 import { WeekGrid, type HitTest, type Preview } from './components/WeekGrid'
 import { Sidebar } from './components/Sidebar'
 import { BlockEditor } from './components/BlockEditor'
@@ -13,7 +13,7 @@ import { accessStatus, eventsForDay, openPrivacySettings, requestAccess } from '
 import { DEFAULT_TARGETS, visibleRange, type RangeTargets } from './lib/dayRange'
 import { PALETTE } from './lib/icons'
 import { ActivityIcon } from './components/ActivityIcon'
-import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react'
+import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon, CheckIcon, SquaresFourIcon } from '@phosphor-icons/react'
 import { useCalendarSync } from './lib/useCalendarSync'
 import { SyncButton } from './components/SyncButton'
 import { UpdateNotice } from './components/UpdateNotice'
@@ -42,6 +42,12 @@ const look = (x: { title?: string; name?: string; color: string; icon?: string; 
 
 const NEW_BLOCK_COLOR = PALETTE.sky
 
+/** Apply a change to whichever blocks are on screen: the template draft if one is open, otherwise her weeks */
+const withBlocks = (d: AppData, fn: (bs: Block[]) => Block[]): AppData =>
+  d.templateDraft ? { ...d, templateDraft: { ...d.templateDraft, blocks: fn(d.templateDraft.blocks) } } : { ...d, blocks: fn(d.blocks) }
+
+const withoutDraft = ({ templateDraft: _, ...rest }: AppData): AppData => rest // eslint-disable-line @typescript-eslint/no-unused-vars
+
 export default function App() {
   const { data, update, undo, redo, canUndo, canRedo, status, retrySave, folder, restoredFrom } = useAppData()
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
@@ -50,14 +56,21 @@ export default function App() {
   const [confirming, setConfirming] = useState<Confirming | null>(null)
   const [restoreNoticeSeen, setRestoreNoticeSeen] = useState(false)
   const [syncPromptDismissed, setSyncPromptDismissed] = useState<string | null>(null)
+  const [templateName, setTemplateName] = useState('')
   const hitTestRef = useRef<HitTest | null>(null)
   const dragRef = useRef<Drag | null>(null)
   dragRef.current = drag
 
-  const dates = useMemo(() => weekDates(weekStart), [weekStart])
-  const weekBlocks = useMemo(() => (data ? data.blocks.filter((b) => dates.includes(b.date)) : []), [data, dates])
-  const weekKey = dates[0]
-  const synced = !!data?.syncedWeeks?.includes(weekKey)
+  // building a template from scratch swaps the real week for a blank one
+  const draft = data?.templateDraft ?? null
+  const inTemplate = draft !== null
+  const dates = useMemo(() => (inTemplate ? TEMPLATE_DATES : weekDates(weekStart)), [inTemplate, weekStart])
+  const weekBlocks = useMemo(
+    () => (draft ? draft.blocks : data ? data.blocks.filter((b) => dates.includes(b.date)) : []),
+    [data, draft, dates],
+  )
+  const weekKey = inTemplate ? 'template' : dates[0]
+  const synced = !inTemplate && !!data?.syncedWeeks?.includes(weekKey)
   const cal = useCalendarSync(weekStart, synced)
   const updater = useUpdater()
 
@@ -90,19 +103,52 @@ export default function App() {
   }
 
   // ---------- data operations ----------
+  const updateBlocks = (fn: (bs: Block[]) => Block[]) => update((d) => withBlocks(d, fn))
+
   const saveBlock = (b: Block, addToBank: boolean) =>
+    update((d) => {
+      const next = withBlocks(d, (bs) => (bs.some((x) => x.id === b.id) ? bs.map((x) => (x.id === b.id ? b : x)) : [...bs, b]))
+      if (!addToBank) return next
+      const activity = { id: uid(), name: b.title, color: b.color, duration: b.end - b.start, ...(b.icon ? { icon: b.icon, iconWeight: b.iconWeight } : {}) }
+      return { ...next, activities: [...next.activities, activity] }
+    })
+
+  const deleteBlock = (id: string) => updateBlocks((bs) => bs.filter((b) => b.id !== id))
+
+  const toTemplateBlocks = (blocks: Block[], ds = dates): TemplateBlock[] =>
+    blocks.map((b) => ({ day: ds.indexOf(b.date), start: b.start, end: b.end, ...look(b) }))
+
+  // ---------- building a template from scratch ----------
+  const startTemplate = () => {
+    setTemplateName('')
+    update((d) => ({ ...d, templateDraft: { blocks: [] } }))
+  }
+
+  const saveDraft = () => {
+    const name = templateName.trim()
+    if (!name || !draft) return
     update((d) => ({
-      ...d,
-      blocks: d.blocks.some((x) => x.id === b.id) ? d.blocks.map((x) => (x.id === b.id ? b : x)) : [...d.blocks, b],
-      activities: addToBank
-        ? [...d.activities, { id: uid(), name: b.title, color: b.color, duration: b.end - b.start, ...(b.icon ? { icon: b.icon, iconWeight: b.iconWeight } : {}) }]
-        : d.activities,
+      ...withoutDraft(d),
+      templates: [...d.templates, { id: uid(), name, blocks: toTemplateBlocks(d.templateDraft?.blocks ?? [], TEMPLATE_DATES) }],
     }))
+    setConfirming({
+      title: 'Template saved',
+      message: `“${name}” is ready. Use it on any week from Week templates.`,
+      actions: [],
+      cancelLabel: 'OK',
+    })
+  }
 
-  const deleteBlock = (id: string) => update((d) => ({ ...d, blocks: d.blocks.filter((b) => b.id !== id) }))
-
-  const toTemplateBlocks = (blocks: Block[]): TemplateBlock[] =>
-    blocks.map((b) => ({ day: dates.indexOf(b.date), start: b.start, end: b.end, ...look(b) }))
+  const leaveDraft = () => {
+    const discard = () => update(withoutDraft)
+    if (!weekBlocks.length) return discard()
+    setConfirming({
+      title: 'Discard this template?',
+      message: 'The blocks you added to it will go. Your weeks aren’t affected.',
+      cancelLabel: 'Keep editing',
+      actions: [{ label: 'Discard', kind: 'danger', run: discard }],
+    })
+  }
 
   const placeTemplate = (tbs: TemplateBlock[], replace: boolean) =>
     update((d) => ({
@@ -198,16 +244,16 @@ export default function App() {
 
       switch (d.kind) {
         case 'bank':
-          update((x) => ({ ...x, blocks: [...x.blocks, { id: uid(), ...p }] }))
+          updateBlocks((bs) => [...bs, { id: uid(), ...p }])
           break
         case 'move':
-          if (e.altKey) update((x) => ({ ...x, blocks: [...x.blocks, { ...d.block, id: uid(), date: p.date, start: p.start, end: p.end }] }))
+          if (e.altKey) updateBlocks((bs) => [...bs, { ...d.block, id: uid(), date: p.date, start: p.start, end: p.end }])
           else if (p.date !== d.block.date || p.start !== d.block.start)
-            update((x) => ({ ...x, blocks: x.blocks.map((b) => (b.id === d.block.id ? { ...b, date: p.date, start: p.start, end: p.end } : b)) }))
+            updateBlocks((bs) => bs.map((b) => (b.id === d.block.id ? { ...b, date: p.date, start: p.start, end: p.end } : b)))
           break
         case 'resize':
           if (p.end !== d.block.end)
-            update((x) => ({ ...x, blocks: x.blocks.map((b) => (b.id === d.block.id ? { ...b, end: p.end } : b)) }))
+            updateBlocks((bs) => bs.map((b) => (b.id === d.block.id ? { ...b, end: p.end } : b)))
           break
         case 'create':
           setEditing({ block: { id: uid(), date: p.date, start: p.start, end: p.end, title: '', color: NEW_BLOCK_COLOR }, isNew: true })
@@ -257,7 +303,7 @@ export default function App() {
 
   const isThisWeek = toISO(weekStart) === toISO(startOfWeek(new Date()))
   const showSyncPrompt =
-    isThisWeek && !synced && weekBlocks.length === 0 && syncPromptDismissed !== weekKey &&
+    !inTemplate && isThisWeek && !synced && weekBlocks.length === 0 && syncPromptDismissed !== weekKey &&
     !editing && !confirming && !(restoredFrom && !restoreNoticeSeen)
   // while moving/resizing, hide the original so only the preview shows
   const hiddenId = drag?.active && drag.preview && (drag.kind === 'move' || drag.kind === 'resize') ? drag.block.id : null
@@ -286,6 +332,43 @@ export default function App() {
       </Sidebar>
 
       <main className="main">
+        {inTemplate ? (
+        <header className="toolbar">
+          <div className="nav">
+            <span className="mode-pill">
+              <SquaresFourIcon size={22} weight="bold" />
+              <span className="btn-label">New template</span>
+            </span>
+            <input
+              className="template-name"
+              autoFocus
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && saveDraft()}
+              placeholder="Name it, e.g. Term week"
+              aria-label="Template name"
+            />
+          </div>
+          <div className="nav">
+            <button className="btn square" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
+              <ArrowUUpLeftIcon size={22} weight="bold" />
+            </button>
+            <button className="btn square" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo}>
+              <ArrowUUpRightIcon size={22} weight="bold" />
+            </button>
+            <button className="btn" onClick={leaveDraft}>Cancel</button>
+            <button
+              className="btn primary"
+              disabled={!templateName.trim() || !weekBlocks.length}
+              title={!weekBlocks.length ? 'Add some blocks first' : !templateName.trim() ? 'Give it a name first' : ''}
+              onClick={saveDraft}
+            >
+              <CheckIcon size={20} weight="bold" />
+              Save template
+            </button>
+          </div>
+        </header>
+        ) : (
         <header className="toolbar">
           <div className="nav">
             <button className="btn" disabled={isThisWeek} onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</button>
@@ -320,6 +403,7 @@ export default function App() {
                   actions: [{ label: 'Delete', kind: 'danger', run: () => update((d) => ({ ...d, templates: d.templates.filter((x) => x.id !== id) })) }],
                 })
               }}
+              onCreate={startTemplate}
               onCopyLastWeek={copyLastWeek}
               onClearWeek={() =>
                 setConfirming({
@@ -331,8 +415,10 @@ export default function App() {
             />
           </div>
         </header>
+        )}
 
         <WeekGrid
+          blank={inTemplate}
           dates={dates}
           blocks={weekBlocks}
           preview={drag?.active ? drag.preview : null}
@@ -369,6 +455,7 @@ export default function App() {
           block={editing.block}
           isNew={editing.isNew}
           activities={data.activities}
+          weekdayOnly={inTemplate}
           clashes={(dayEvents[dates.indexOf(editing.block.date)]?.timed ?? [])}
           onSave={(b, addToBank) => {
             saveBlock(b, addToBank)

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CaretDownIcon, CopyIcon, SquaresFourIcon, StarIcon, TrashIcon, XIcon } from '@phosphor-icons/react'
+import { CaretDownIcon, CopyIcon, PlusIcon, SquaresFourIcon, StarIcon, TrashIcon, XIcon } from '@phosphor-icons/react'
 import type { Template } from '../lib/types'
 
 interface Props {
@@ -8,6 +8,8 @@ interface Props {
   onSaveTemplate: (name: string) => void
   onApply: (t: Template) => void
   onDeleteTemplate: (id: string) => void
+  /** start a template from a blank week */
+  onCreate: () => void
   onCopyLastWeek: () => void
   onClearWeek: () => void
 }
@@ -44,7 +46,7 @@ export function TemplatesMenu(p: Props) {
       {open && (
         <div className="menu panel">
           <div className="menu-section">Use a template for this week</div>
-          {p.templates.length === 0 && <div className="menu-empty">No templates yet. Lay out a typical week, then save it below.</div>}
+          {p.templates.length === 0 && <div className="menu-empty">No templates yet. Create one from a blank week, or save a week you’ve already planned.</div>}
           {p.templates.map((t) => (
             <div key={t.id} className="menu-row">
               <button className="menu-item grow" onClick={act(() => p.onApply(t))}>
@@ -59,6 +61,10 @@ export function TemplatesMenu(p: Props) {
           ))}
 
           <div className="menu-sep" />
+          <button className="menu-item" onClick={act(p.onCreate)}>
+            <PlusIcon size={20} weight="bold" />
+            Create a template
+          </button>
           {naming ? (
             <form
               className="menu-form"
