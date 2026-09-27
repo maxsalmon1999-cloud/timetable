@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { CheckIcon, PlusIcon } from '@phosphor-icons/react'
 import type { Activity, IconWeight } from '../lib/types'
 import { COLORS, DURATIONS, uid } from '../lib/constants'
-import { PALETTE } from '../lib/icons'
+import { discIcon, guessIcon, PALETTE } from '../lib/icons'
 import { fmtDuration, fmtTime } from '../lib/dates'
 import { ColorPicker, Modal } from './Modal'
 import { IconLibrary } from './IconLibrary'
@@ -28,7 +28,14 @@ export function ActivityEditor({
   const [color, setColor] = useState(activity?.color ?? PALETTE.pink)
   const [duration, setDuration] = useState(activity?.duration ?? 60)
   const [custom, setCustom] = useState(() => !DURATIONS.includes(activity?.duration ?? 60))
-  const [icon, setIcon] = useState(activity?.icon)
+  const [chosenIcon, setChosenIcon] = useState(activity?.icon)
+  // until she picks one herself, the icon follows a guess from the name
+  const [iconPicked, setIconPicked] = useState(!!activity?.icon)
+  const icon = iconPicked ? chosenIcon : (guessIcon(name) ?? chosenIcon)
+  const pickIcon = (n: string | undefined) => {
+    setChosenIcon(n)
+    setIconPicked(true)
+  }
   const [weight, setWeight] = useState<IconWeight>(activity?.iconWeight ?? 'bold')
   const hours = Math.floor(duration / 60)
   const mins = duration % 60
@@ -103,14 +110,14 @@ export function ActivityEditor({
           <div className="field preview">
             <span className="label">Preview</span>
             <div className="activity" style={{ ['--c' as string]: color }}>
-              <span className="icon-disc"><ActivityIcon name={icon} weight={weight} size={19} fallback={preview} /></span>
+              <span className="icon-disc"><ActivityIcon name={discIcon(icon, preview)} weight={weight} size={19} /></span>
               <span className="activity-name">{preview}</span>
               <span className="mono activity-dur">{fmtDuration(duration)}</span>
             </div>
-            <div className="item block preview-block" style={{ ['--c' as string]: color }}>
+            <div className="item block tier-tall preview-block" style={{ ['--c' as string]: color }}>
               <div className="item-text">
                 <div className="item-title-row"><span className="item-title">{preview}</span></div>
-                <div className="item-time">{fmtTime(14 * 60)}–{fmtTime(Math.min(24 * 60, 14 * 60 + duration))}</div>
+                <div className="item-time mono">{fmtTime(14 * 60)}–{fmtTime(Math.min(24 * 60, 14 * 60 + duration))}</div>
               </div>
               <ActivityIcon className="item-icon" name={icon} weight={weight} size={24} />
             </div>
@@ -118,7 +125,7 @@ export function ActivityEditor({
         </div>
 
         <div className="lib-icons">
-          <IconLibrary icon={icon} weight={weight} color={color} onPick={setIcon} />
+          <IconLibrary icon={icon} weight={weight} color={color} onPick={pickIcon} />
           <div className="modal-actions">
             <span className="mono caption">{icon ? `${icon.replace(/-/g, ' ')} · ${weight}` : 'No icon'}</span>
             <button type="button" className="btn" onClick={onClose}>Cancel</button>

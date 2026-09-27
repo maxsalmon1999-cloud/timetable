@@ -17,7 +17,11 @@ export function IconLibrary({
   color: string
   onPick: (icon: string | undefined) => void
 }) {
-  const [cat, setCat] = useState('Basics')
+  const [cat, setCat] = useState(() =>
+    icon && !ICON_CATEGORIES.Basics.icons.includes(icon)
+      ? (Object.keys(ICON_CATEGORIES).find((c) => ICON_CATEGORIES[c].icons.includes(icon)) ?? 'Basics')
+      : 'Basics',
+  )
   const [query, setQuery] = useState('')
   const searching = query.trim() !== ''
   const names = searching ? searchIcons(query) : ICON_CATEGORIES[cat].icons

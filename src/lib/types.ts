@@ -43,8 +43,8 @@ export interface Template {
 }
 
 export interface AppData {
-  /** 1 = original; 2 = pastel palette + icons (see lib/migrate.ts) */
-  version: 2
+  /** 1 = original; 2 = pastel palette + icon fields; 3 = icons filled in from names (see lib/migrate.ts) */
+  version: 3
   activities: Activity[]
   blocks: Block[]
   templates: Template[]

@@ -65,22 +65,15 @@ a:hover{color:#5B3FD6}
   </div>
 
   <div style="width:1440px;background-color:#ECE7FB;background-image:repeating-linear-gradient(-45deg,rgba(33,28,51,0.045) 0 2px,transparent 2px 22px);border:2.5px solid #211C33;border-radius:18px;overflow:hidden;display:flex;flex-direction:column;box-shadow:8px 8px 0 #211C33">
-    <!-- title band (native traffic lights, overlay title bar) -->
-    <div style="height:40px;display:flex;align-items:center;gap:8px;padding:0 18px;flex-shrink:0">
-      <span style="width:13px;height:13px;border-radius:50%;background:#FF5F57"></span>
-      <span style="width:13px;height:13px;border-radius:50%;background:#FEBC2E"></span>
-      <span style="width:13px;height:13px;border-radius:50%;background:#28C840"></span>
-    </div>
-
-    <div style="display:flex;gap:16px;padding:0 16px 16px 16px;align-items:stretch">
+    <div style="display:flex;gap:16px;padding:16px;align-items:stretch">
       <!-- SIDEBAR -->
       <aside style="width:264px;flex-shrink:0;background:#FFFBF4;border:2.5px solid #211C33;border-radius:18px;box-shadow:5px 5px 0 #211C33;display:flex;flex-direction:column;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 12px 12px 16px;background:#FFB8D6;border-bottom:2.5px solid #211C33">
           <div style="display:flex;flex-direction:column;gap:6px">
-            <div style="display:flex;gap:5px">
-              <span style="width:11px;height:11px;border-radius:50%;background:#FF9A8A;border:2px solid #211C33"></span>
-              <span style="width:11px;height:11px;border-radius:50%;background:#FFE680;border:2px solid #211C33"></span>
-              <span style="width:11px;height:11px;border-radius:50%;background:#A8E8BF;border:2px solid #211C33"></span>
+            <div title="Native window buttons, moved here with trafficLightPosition" style="display:flex;gap:8px">
+              <span style="width:12px;height:12px;border-radius:50%;background:#FF5F57"></span>
+              <span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E"></span>
+              <span style="width:12px;height:12px;border-radius:50%;background:#28C840"></span>
             </div>
             <h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-0.01em">Activities</h1>
           </div>
@@ -187,23 +180,26 @@ a:hover{color:#5B3FD6}
                 <div style="position:relative;border-left:1.5px solid rgba(33,28,51,0.16);cursor:crosshair">
                   <sc-if value="{{ d.today }}"><div style="position:absolute;inset:0;background:rgba(255,230,128,0.35)"></div></sc-if>
                   <sc-for list="{{ d.items }}" as="it" hint-placeholder-count="4">
-                    <div style="{{ it.pos }}">
-                      <sc-if value="{{ it.tall }}">
+                    <div style="{{ it.pos }}" title="{{ it.tip }}">
+                      <sc-if value="{{ it.twoLine }}">
                         <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
-                          <div style="display:flex;align-items:center;gap:4px;font-weight:700;font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                          <div style="display:flex;align-items:center;gap:4px;font-weight:700;font-size:14px;line-height:1.15;white-space:nowrap;overflow:hidden">
                             <sc-if value="{{ it.conflict }}"><i class="ph-bold ph-warning" style="font-size:15px;color:#C4301C;flex-shrink:0"></i></sc-if>
+                            <sc-if value="{{ it.inlineIcon }}"><i class="{{ it.iconClass }}" style="font-size:16px;flex-shrink:0"></i></sc-if>
                             <span style="overflow:hidden;text-overflow:ellipsis">{{ it.title }}</span>
                           </div>
-                          <div style="font:500 11.5px 'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.time }}</div>
+                          <div style="font:500 11.5px/1.2 'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.time }}</div>
                         </div>
-                        <sc-if value="{{ it.showIcon }}">
+                        <sc-if value="{{ it.bigIcon }}">
                           <i class="{{ it.iconClass }}" style="position:absolute;right:7px;bottom:6px;font-size:24px"></i>
                         </sc-if>
                       </sc-if>
-                      <sc-if value="{{ it.short }}">
-                        <div style="display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden">
-                          <span style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis">{{ it.title }}</span>
-                          <span style="font:500 11px 'DM Mono',monospace">{{ it.startLabel }}</span>
+                      <sc-if value="{{ it.oneLine }}">
+                        <div style="{{ it.lineStyle }}">
+                          <sc-if value="{{ it.conflict }}"><i class="ph-bold ph-warning" style="font-size:13px;color:#C4301C;flex-shrink:0"></i></sc-if>
+                          <sc-if value="{{ it.inlineIcon }}"><i class="{{ it.iconClass }}" style="{{ it.iconStyle }}"></i></sc-if>
+                          <span style="min-width:0;overflow:hidden;text-overflow:ellipsis">{{ it.title }}</span>
+                          <sc-if value="{{ it.showStart }}"><span style="font:500 11px/1 'DM Mono',monospace;flex-shrink:0">{{ it.startLabel }}</span></sc-if>
                         </div>
                       </sc-if>
                     </div>
@@ -503,11 +499,15 @@ a:hover{color:#5B3FD6}
       <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:20px;align-items:start">
         <div style="display:flex;flex-direction:column;gap:8px">
           <div style="position:relative;height:120px;padding:6px 9px;background:#A9D6FF;border:2px solid #211C33;border-radius:10px;box-shadow:3px 3px 0 #211C33"><div style="font-weight:700;font-size:14px">Lecture</div><div style="font:500 11.5px 'DM Mono',monospace">10:00–12:00</div><i class="ph-bold ph-chalkboard-teacher" style="position:absolute;right:7px;bottom:6px;font-size:24px"></i></div>
-          <span style="font:500 12px 'DM Mono',monospace">Block · tall (icon ≥ 50px high)</span>
+          <span style="font:500 12px 'DM Mono',monospace">Block · tall (72px+) · big icon bottom-right</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="height:26px;padding:2px 8px;display:flex;align-items:baseline;gap:6px;background:#CDB9FF;border:2px solid #211C33;border-radius:10px;box-shadow:3px 3px 0 #211C33"><span style="font-weight:700;font-size:13px">Reading</span><span style="font:500 11px 'DM Mono',monospace">21:00</span></div>
-          <span style="font:500 12px 'DM Mono',monospace">Block · short (under 38px: one line)</span>
+          <div style="height:56px;padding:4px 8px;background:#CDB9FF;border:2px solid #211C33;border-radius:10px;box-shadow:3px 3px 0 #211C33"><div style="display:flex;align-items:center;gap:4px;font-weight:700;font-size:14px;line-height:1.15"><i class="ph-bold ph-book-open" style="font-size:16px"></i>Reading</div><div style="font:500 11.5px/1.2 'DM Mono',monospace">11:30–13:00</div></div>
+          <span style="font:500 12px 'DM Mono',monospace">Block · medium (44–71px) · inline icon</span>
+          <div style="height:34px;padding:0 8px;display:flex;align-items:center;gap:5px;background:#FFC49E;border:2px solid #211C33;border-radius:10px;box-shadow:3px 3px 0 #211C33;font-weight:700;font-size:13px;line-height:1"><i class="ph-bold ph-fork-knife" style="font-size:16px"></i><span>Lunch</span><span style="font:500 11px/1 'DM Mono',monospace">12:00</span></div>
+          <span style="font:500 12px 'DM Mono',monospace">Block · short (24–43px) · one line + start</span>
+          <div style="height:20px;padding:0 6px;display:flex;align-items:center;gap:4px;background:#CDB9FF;border:2px solid #211C33;border-radius:10px;box-shadow:3px 3px 0 #211C33;font-weight:700;font-size:12px;line-height:1"><i class="ph-bold ph-book-open" style="font-size:13px"></i><span>Reading</span></div>
+          <span style="font:500 12px 'DM Mono',monospace">Block · tiny (under 24px) · no time</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <div style="height:80px;padding:6px 9px;background:repeating-linear-gradient(-45deg,#FFFBF4 0 7px,#CDB9FF 7px 14px);border:2px dashed #211C33;border-radius:10px"><div style="font-weight:700;font-size:14px">Cinema</div><div style="font:500 11.5px 'DM Mono',monospace">19:30–22:00</div></div>
@@ -605,7 +605,7 @@ const WEIGHTS = [['bold','Bold'],['fill','Filled'],['duotone','Duotone']];
 const DAYS = [['Mon',21],['Tue',22],['Wed',23],['Thu',24],['Fri',25],['Sat',26],['Sun',27]];
 const TODAY = 6, NOW = t(14, 20);
 const ACTS = [['Lecture','sky','chalkboard-teacher','2h'],['Seminar','teal','chats-circle','1h'],['Reading','lilac','book-open','1h 30m'],['Library','lemon','books','2h'],['Essay','sand','pencil-line','2h'],['Gym','mint','barbell','1h'],['Friends','pink','users-three','2h']];
-const DEF_START = t(9), DEF_END = t(22), MIN_START = t(1), MAX_END = t(23, 30), CHROME = 282;
+const DEF_START = t(9), DEF_END = t(22), MIN_START = t(1), MAX_END = t(23, 30), CHROME = 258;
 const ic = (n) => `ph-bold ph-${n}`;
 
 class Component extends DCLogic {
@@ -675,11 +675,16 @@ class Component extends DCLogic {
     const days = DAYS.map(([dow, dom], i) => ({
       dow, dom, today: i === TODAY, notToday: i !== TODAY,
       items: items.filter((x) => x.d === i).map((x) => {
-        const h = (x.e - x.s) * ppm, lanes = x.lanes || 1, lane = x.lane || 0;
-        const tall = h >= 38;
+        const h = (x.e - x.s) * ppm, H = h - 3, lanes = x.lanes || 1, lane = x.lane || 0;
+        const tier = H < 24 ? 'tiny' : H < 44 ? 'short' : H < 72 ? 'medium' : 'tall';
+        const twoLine = tier === 'medium' || tier === 'tall', bigIcon = tier === 'tall' && lanes === 1;
         return {
           title: x.title, time: `${fmt(x.s)}–${fmt(x.e)}`, startLabel: fmt(x.s), iconClass: ic(x.icon),
-          tall, short: !tall, conflict: !!x.conflict, showIcon: tall && lanes === 1 && h >= 50,
+          tip: `${x.title} · ${fmt(x.s)}–${fmt(x.e)}`,
+          twoLine, oneLine: !twoLine, bigIcon, inlineIcon: !bigIcon && !x.conflict, conflict: !!x.conflict,
+          showStart: tier === 'short' && lanes === 1,
+          lineStyle: { display: 'flex', alignItems: 'center', gap: tier === 'tiny' ? 4 : 5, height: '100%', whiteSpace: 'nowrap', overflow: 'hidden', fontWeight: 700, fontSize: tier === 'tiny' ? 12 : 13, lineHeight: 1 },
+          iconStyle: { fontSize: tier === 'tiny' ? 13 : 16, flexShrink: 0 },
           pos: {
             position: 'absolute', zIndex: 1, top: (x.s - start) * ppm + 1.5, height: h - 3,
             left: `calc(${(lane / lanes) * 100}% + ${lane ? 2 : 5}px)`, width: `calc(${100 / lanes}% - ${lanes > 1 ? 7 : 10}px)`,
@@ -687,7 +692,7 @@ class Component extends DCLogic {
             background: x.cal ? `repeating-linear-gradient(-45deg,#FFFBF4 0 7px,${C[x.c]} 7px 14px)` : C[x.c],
             boxShadow: x.cal ? 'none' : `3px 3px 0 ${INK}`,
             outline: x.conflict ? '3px solid #F0503C' : 'none', outlineOffset: 2,
-            padding: tall ? '6px 9px' : '2px 8px', cursor: x.cal ? 'default' : 'grab', color: INK,
+            padding: { tiny: '0 6px', short: '0 8px', medium: '4px 8px', tall: '6px 9px' }[tier], cursor: x.cal ? 'default' : 'grab', color: INK,
           },
         };
       }),

@@ -11,7 +11,7 @@ import { Confirm } from './components/Modal'
 import { revealDataFolder } from './lib/storage'
 import { accessStatus, eventsForDay, openPrivacySettings, requestAccess } from './lib/calendar'
 import { DEFAULT_TARGETS, visibleRange, type RangeTargets } from './lib/dayRange'
-import { PALETTE } from './lib/icons'
+import { discIcon, PALETTE } from './lib/icons'
 import { ActivityIcon } from './components/ActivityIcon'
 import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon, CheckIcon, SquaresFourIcon } from '@phosphor-icons/react'
 import { useCalendarSync } from './lib/useCalendarSync'
@@ -47,6 +47,30 @@ const withBlocks = (d: AppData, fn: (bs: Block[]) => Block[]): AppData =>
   d.templateDraft ? { ...d, templateDraft: { ...d.templateDraft, blocks: fn(d.templateDraft.blocks) } } : { ...d, blocks: fn(d.blocks) }
 
 const withoutDraft = ({ templateDraft: _, ...rest }: AppData): AppData => rest // eslint-disable-line @typescript-eslint/no-unused-vars
+
+/**
+ * Save an activity. If its icon/style changed, blocks named after it (in weeks, templates and the draft) follow,
+ * unless she gave that block a different icon by hand. One update → one undo step.
+ */
+function saveActivity(d: AppData, a: Activity): AppData {
+  const prev = d.activities.find((x) => x.id === a.id)
+  const next = { ...d, activities: prev ? d.activities.map((x) => (x.id === a.id ? a : x)) : [...d.activities, a] }
+  if (!prev || (prev.icon === a.icon && (prev.iconWeight ?? 'bold') === (a.iconWeight ?? 'bold'))) return next
+
+  const names = new Set([prev.name, a.name].map((n) => n.trim().toLowerCase()))
+  const follow = <T extends Block | TemplateBlock>(b: T): T => {
+    if (!names.has(b.title.trim().toLowerCase())) return b
+    if (b.icon && b.icon !== prev.icon) return b // changed by hand: leave it
+    const { icon: _i, iconWeight: _w, ...rest } = b // eslint-disable-line @typescript-eslint/no-unused-vars
+    return { ...rest, ...(a.icon ? { icon: a.icon, iconWeight: a.iconWeight } : {}) } as T
+  }
+  return {
+    ...next,
+    blocks: next.blocks.map(follow),
+    templates: next.templates.map((t) => ({ ...t, blocks: t.blocks.map(follow) })),
+    ...(next.templateDraft ? { templateDraft: { ...next.templateDraft, blocks: next.templateDraft.blocks.map(follow) } } : {}),
+  }
+}
 
 export default function App() {
   const { data, update, undo, redo, canUndo, canRedo, status, retrySave, folder, restoredFrom } = useAppData()
@@ -310,18 +334,11 @@ export default function App() {
 
   return (
     <div className={'app' + (drag?.active ? ' dragging' : '')}>
-      {/* the native traffic lights sit on top of this band (overlay title bar) */}
-      <div className="titlebar" data-tauri-drag-region />
       <div className="shell">
       <Sidebar
         activities={data.activities}
         onDragStart={(e, activity) => beginDrag(e, { kind: 'bank', activity })}
-        onSave={(a) =>
-          update((d) => ({
-            ...d,
-            activities: d.activities.some((x) => x.id === a.id) ? d.activities.map((x) => (x.id === a.id ? a : x)) : [...d.activities, a],
-          }))
-        }
+        onSave={(a) => update((d) => saveActivity(d, a))}
         onDelete={(id) => update((d) => ({ ...d, activities: d.activities.filter((a) => a.id !== id) }))}
         saveStatus={status}
         folder={folder}
@@ -333,8 +350,8 @@ export default function App() {
 
       <main className="main">
         {inTemplate ? (
-        <header className="toolbar">
-          <div className="nav">
+        <header className="toolbar" data-tauri-drag-region>
+          <div className="nav" data-tauri-drag-region>
             <span className="mode-pill">
               <SquaresFourIcon size={22} weight="bold" />
               <span className="btn-label">New template</span>
@@ -349,7 +366,7 @@ export default function App() {
               aria-label="Template name"
             />
           </div>
-          <div className="nav">
+          <div className="nav" data-tauri-drag-region>
             <button className="btn square" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
               <ArrowUUpLeftIcon size={22} weight="bold" />
             </button>
@@ -369,8 +386,8 @@ export default function App() {
           </div>
         </header>
         ) : (
-        <header className="toolbar">
-          <div className="nav">
+        <header className="toolbar" data-tauri-drag-region>
+          <div className="nav" data-tauri-drag-region>
             <button className="btn" disabled={isThisWeek} onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</button>
             <button className="btn square" title="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>
               <CaretLeftIcon size={22} weight="bold" />
@@ -378,10 +395,10 @@ export default function App() {
             <button className="btn square" title="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>
               <CaretRightIcon size={22} weight="bold" />
             </button>
-            <h2 className="week-label">{weekLabel(weekStart)}</h2>
+            <h2 className="week-label" data-tauri-drag-region>{weekLabel(weekStart)}</h2>
             <SyncButton synced={synced} state={cal.state} onClick={syncWeek} />
           </div>
-          <div className="nav">
+          <div className="nav" data-tauri-drag-region>
             <button className="btn square" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
               <ArrowUUpLeftIcon size={22} weight="bold" />
             </button>
@@ -443,7 +460,7 @@ export default function App() {
       {drag?.active && drag.kind === 'bank' && !drag.preview && (
         <div className="drag-chip" style={{ left: drag.x, top: drag.y, ['--c' as string]: drag.activity.color }}>
           <span className="icon-disc small">
-            <ActivityIcon name={drag.activity.icon} weight={drag.activity.iconWeight} size={16} fallback={drag.activity.name} />
+            <ActivityIcon name={discIcon(drag.activity.icon, drag.activity.name)} weight={drag.activity.iconWeight} size={16} />
           </span>
           {drag.activity.name}
         </div>

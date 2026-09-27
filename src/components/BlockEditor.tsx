@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { CheckIcon, PlusIcon, SquaresFourIcon, TrashIcon, WarningIcon } from '@phosphor-icons/react'
 import type { Activity, Block } from '../lib/types'
 import { COLORS, MAX_END, MIN_START, SNAP } from '../lib/constants'
-import { BASE_ICONS } from '../lib/icons'
+import { BASE_ICONS, discIcon, guessIcon } from '../lib/icons'
 import { fmtTime, fromISO } from '../lib/dates'
 import { overlaps, type DayEvent } from '../lib/calendar'
 import { ColorPicker, Modal } from './Modal'
@@ -35,7 +35,14 @@ export function BlockEditor({
 }) {
   const [title, setTitle] = useState(block.title)
   const [color, setColor] = useState(block.color)
-  const [icon, setIcon] = useState(block.icon)
+  const [chosenIcon, setChosenIcon] = useState(block.icon)
+  // until an icon is picked (tile, library or activity chip), it follows a guess from the title
+  const [iconPicked, setIconPicked] = useState(!!block.icon)
+  const icon = iconPicked ? chosenIcon : (guessIcon(title) ?? chosenIcon)
+  const setIcon = (n: string | undefined) => {
+    setChosenIcon(n)
+    setIconPicked(true)
+  }
   const [iconWeight, setIconWeight] = useState(block.iconWeight)
   const [start, setStart] = useState(block.start)
   const [end, setEnd] = useState(block.end)
@@ -71,11 +78,11 @@ export function BlockEditor({
                   onClick={() => {
                     setTitle(a.name)
                     setColor(a.color)
-                    setIcon(a.icon)
+                    setIcon(a.icon ?? guessIcon(a.name))
                     setIconWeight(a.iconWeight)
                   }}
                 >
-                  <ActivityIcon name={a.icon} weight={a.iconWeight} size={17} />
+                  <ActivityIcon name={discIcon(a.icon, a.name)} weight={a.iconWeight} size={17} />
                   {a.name}
                 </button>
               ))}

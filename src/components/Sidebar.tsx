@@ -2,6 +2,8 @@ import { useState, type PointerEvent as RPointerEvent, type ReactNode } from 're
 import { CursorClickIcon, HandGrabbingIcon, PencilSimpleIcon, PlusIcon, SelectionPlusIcon, XIcon } from '@phosphor-icons/react'
 import type { Activity } from '../lib/types'
 import { fmtDuration } from '../lib/dates'
+import { discIcon } from '../lib/icons'
+import { isTauri } from '../lib/tauri'
 import { ActivityEditor } from './ActivityEditor'
 import { Confirm, Dots } from './Modal'
 import { SaveIndicator } from './SaveIndicator'
@@ -27,10 +29,11 @@ export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus,
 
   return (
     <aside className="sidebar panel">
-      <div className="panel-head pink">
-        <div className="panel-title">
-          <Dots />
-          <h1>Activities</h1>
+      <div className="panel-head pink" data-tauri-drag-region>
+        <div className="panel-title" data-tauri-drag-region>
+          {/* in the app the real window buttons sit here instead of the decorative dots */}
+          {isTauri ? <div className="traffic-light-space" data-tauri-drag-region /> : <Dots />}
+          <h1 data-tauri-drag-region>Activities</h1>
         </div>
         <button className="btn square lemon" title="New activity" onClick={() => setEditing('new')}>
           <PlusIcon size={24} weight="bold" />
@@ -41,7 +44,7 @@ export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus,
         {activities.map((a) => (
           <li key={a.id} className="activity" style={{ ['--c' as string]: a.color }} onPointerDown={(e) => e.button === 0 && onDragStart(e, a)}>
             <span className="icon-disc">
-              <ActivityIcon name={a.icon} weight={a.iconWeight} size={19} fallback={a.name} />
+              <ActivityIcon name={discIcon(a.icon, a.name)} weight={a.iconWeight} size={19} />
             </span>
             <span className="activity-name">{a.name}</span>
             <span className="mono activity-dur">{fmtDuration(a.duration)}</span>

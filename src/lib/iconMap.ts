@@ -1,5 +1,5 @@
-// Generated from the curated names in icons.ts: an explicit map keeps the bundle to just these icons.
-// Regenerate if icons.ts changes (every name must exist in @phosphor-icons/react as <PascalCase>Icon).
+// Generated from the curated names in icons.ts (categories + name guesses): an explicit map keeps the bundle
+// to just these icons. Regenerate if icons.ts changes (every name must exist in @phosphor-icons/react as <PascalCase>Icon).
 import type { Icon } from '@phosphor-icons/react'
 import {
   AirplaneTiltIcon,
@@ -15,6 +15,7 @@ import {
   BookOpenIcon,
   BooksIcon,
   BrainIcon,
+  BriefcaseIcon,
   BroomIcon,
   BusIcon,
   CakeIcon,
@@ -26,6 +27,7 @@ import {
   ChalkboardTeacherIcon,
   ChampagneIcon,
   ChatsCircleIcon,
+  ClipboardTextIcon,
   CoffeeIcon,
   CompassIcon,
   ConfettiIcon,
@@ -102,6 +104,7 @@ import {
   WineIcon,
   WrenchIcon,
 } from '@phosphor-icons/react'
+import { ALL_ICONS, GUESSED_ICONS } from './icons'
 
 export const ICON_COMPONENTS: Record<string, Icon> = {
   'airplane-tilt': AirplaneTiltIcon,
@@ -117,6 +120,7 @@ export const ICON_COMPONENTS: Record<string, Icon> = {
   'book-open': BookOpenIcon,
   'books': BooksIcon,
   'brain': BrainIcon,
+  'briefcase': BriefcaseIcon,
   'broom': BroomIcon,
   'bus': BusIcon,
   'cake': CakeIcon,
@@ -128,6 +132,7 @@ export const ICON_COMPONENTS: Record<string, Icon> = {
   'chalkboard-teacher': ChalkboardTeacherIcon,
   'champagne': ChampagneIcon,
   'chats-circle': ChatsCircleIcon,
+  'clipboard-text': ClipboardTextIcon,
   'coffee': CoffeeIcon,
   'compass': CompassIcon,
   'confetti': ConfettiIcon,
@@ -203,4 +208,9 @@ export const ICON_COMPONENTS: Record<string, Icon> = {
   'washing-machine': WashingMachineIcon,
   'wine': WineIcon,
   'wrench': WrenchIcon,
+}
+
+if (import.meta.env.DEV) {
+  const missing = [...ALL_ICONS, ...GUESSED_ICONS, 'star'].filter((n) => !ICON_COMPONENTS[n])
+  if (missing.length) throw new Error(`iconMap.ts is missing: ${missing.join(', ')}. Regenerate it from icons.ts.`)
 }

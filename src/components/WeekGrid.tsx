@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode, type RefObject } from 'react'
 import { CalendarBlankIcon, MinusIcon, PlusIcon, SparkleIcon, WarningIcon } from '@phosphor-icons/react'
 import type { Block, IconWeight } from '../lib/types'
 import { fmtTime, fromISO, toISO } from '../lib/dates'
@@ -49,23 +49,22 @@ interface Props {
   onBlockDown: (e: RPointerEvent, block: Block, mode: 'move' | 'resize') => void
 }
 
-/** under this many px a block shows one line (title + start time) */
-const TALL_PX = 38
-/** icon shows bottom-right when a block is at least this tall and not sharing a lane… */
-const ICON_PX = 50
-/** …but in narrow day columns it would sit on the time text, so it needs its own row */
-const NARROW_COL_PX = 140
-const ICON_PX_NARROW = 64
+/**
+ * Block layouts by box height H (FIXES.md #1): each tier only shows what fits without touching a border.
+ *   tiny   < 24   one line: icon + title (no time)
+ *   short  24–43  one line: icon + title + start time (start only when not sharing a lane)
+ *   medium 44–71  two lines: icon + title / time range
+ *   tall   ≥ 72   two lines + 24px icon bottom-right (inline icon instead when sharing a lane)
+ */
+type Tier = 'tiny' | 'short' | 'medium' | 'tall'
+const tierFor = (H: number): Tier => (H < 24 ? 'tiny' : H < 44 ? 'short' : H < 72 ? 'medium' : 'tall')
 
 export function WeekGrid(p: Props) {
   const { dates, blocks, preview, hiddenId, days, range, hitTestRef } = p
   const colsRef = useRef<HTMLDivElement>(null)
   // elements kept in state (not just refs) so their sizes are measured as soon as they mount
   const [bodyEl, setBodyEl] = useState<HTMLDivElement | null>(null)
-  const [colsEl, setColsEl] = useState<HTMLDivElement | null>(null)
   const bodyHeight = useSize(bodyEl).height
-  const colWidth = useSize(colsEl).width / 7
-  const iconMin = colWidth >= NARROW_COL_PX ? ICON_PX : ICON_PX_NARROW
   const now = useNow()
   const today = p.blank ? '' : toISO(now)
   const { start, end } = range
@@ -159,10 +158,7 @@ export function WeekGrid(p: Props) {
 
             <div
               className="cols"
-              ref={(el) => {
-                colsRef.current = el
-                setColsEl(el)
-              }}
+              ref={colsRef}
             >
               {hours.map((h) => (
                 <div key={h} className="hour-line" style={{ top: (h * 60 - start) * ppm }} />
@@ -173,7 +169,7 @@ export function WeekGrid(p: Props) {
                 const lanes = layoutLanes<{ id: string; start: number; end: number }>([...dayBlocks, ...dayEvents])
                 const place = (id: string, s: number, e: number): Placed => {
                   const { lane, lanes: n } = lanes.get(id) ?? { lane: 0, lanes: 1 }
-                  return placeItem(s, e, lane, n, start, ppm, iconMin)
+                  return placeItem(s, e, lane, n, start, ppm)
                 }
                 return (
                   <div
@@ -198,7 +194,7 @@ export function WeekGrid(p: Props) {
                       />
                     ))}
                     {preview && preview.date === d && (
-                      <BlockView block={{ ...preview, id: 'preview' }} ghost placed={placeItem(preview.start, preview.end, 0, 1, start, ppm, iconMin)} />
+                      <BlockView block={{ ...preview, id: 'preview' }} ghost placed={placeItem(preview.start, preview.end, 0, 1, start, ppm)} />
                     )}
                     {d === today && nowMin >= start && nowMin <= end && (
                       <div className="now-line" style={{ top: (nowMin - start) * ppm }}>
@@ -236,47 +232,88 @@ export function WeekGrid(p: Props) {
 
 interface Placed {
   style: CSSProperties
+  tier: Tier
+  /** box height in px */
   height: number
-  /** alone in its lane and tall enough for the bottom-right icon */
-  showIcon: boolean
+  /** sharing its lane with overlapping items */
+  shared: boolean
 }
 
-function placeItem(s: number, e: number, lane: number, lanes: number, dayStart: number, ppm: number, iconMin: number): Placed {
-  const height = (e - s) * ppm
+function placeItem(s: number, e: number, lane: number, lanes: number, dayStart: number, ppm: number): Placed {
+  const boxHeight = (e - s) * ppm - 3
+  const tier = tierFor(boxHeight)
   return {
-    height,
-    showIcon: lanes === 1 && height >= Math.max(TALL_PX, iconMin),
+    tier,
+    height: boxHeight,
+    shared: lanes > 1,
     style: {
       top: (s - dayStart) * ppm + 1.5,
-      height: height - 3,
+      height: boxHeight,
       left: `calc(${(lane / lanes) * 100}% + ${lane ? 2 : 5}px)`,
       width: `calc(${100 / lanes}% - ${lanes > 1 ? 7 : 10}px)`,
     },
   }
 }
 
-function ItemText({ title, s, e, tall, clash }: { title: string; s: number; e: number; tall: boolean; clash: boolean }) {
-  const warn = clash && <WarningIcon className="clash-icon" size={tall ? 15 : 13} weight="bold" />
-  if (!tall)
+/** Title/time/icon laid out for the item's tier. `icon` is a rendered icon at the requested size. */
+function ItemContent({
+  title,
+  s,
+  e,
+  placed,
+  clash,
+  icon,
+}: {
+  title: string
+  s: number
+  e: number
+  placed: Placed
+  clash: boolean
+  icon: (size: number, className?: string) => ReactNode
+}) {
+  const { tier, shared } = placed
+  const bigIcon = tier === 'tall' && !shared
+  // Tiny boxes can be very thin in small windows (30m ≈ 12px at 1100×680): shrink to fit the inside
+  // (box − 2px borders top and bottom), and drop what would be illegible. The tooltip still says it all.
+  const room = placed.height - 5
+  const iconSize = tier === 'tiny' ? Math.min(13, room) : tier === 'short' ? 13 : 15
+  const textSize = Math.min(12, room)
+  const showIcon = tier !== 'tiny' || iconSize >= 9
+  const showTitle = tier !== 'tiny' || textSize >= 9
+  // a clash warning takes the inline icon's place; the big icon stays
+  const inline = !showIcon
+    ? null
+    : clash
+      ? <WarningIcon className="clash-icon" size={iconSize} weight="bold" />
+      : !bigIcon && icon(tier === 'tiny' ? iconSize : 16, 'inline-icon')
+
+  if (tier === 'tiny' || tier === 'short')
     return (
-      <div className="item-line">
-        {warn}
-        <span className="item-title">{title}</span>
-        <span className="item-time">{fmtTime(s)}</span>
+      <div className="item-line" style={tier === 'tiny' ? { fontSize: textSize } : undefined}>
+        {inline}
+        {showTitle && <span className="item-title">{title}</span>}
+        {tier === 'short' && !shared && <span className="item-start mono">{fmtTime(s)}</span>}
       </div>
     )
   return (
-    <div className="item-text">
-      <div className="item-title-row">
-        {warn}
-        <span className="item-title">{title}</span>
+    <>
+      <div className="item-text">
+        <div className="item-title-row">
+          {inline}
+          <span className="item-title">{title}</span>
+        </div>
+        <div className="item-time mono">
+          {fmtTime(s)}–{fmtTime(e)}
+        </div>
       </div>
-      <div className="item-time">
-        {fmtTime(s)}–{fmtTime(e)}
-      </div>
-    </div>
+      {bigIcon && icon(24, 'item-icon')}
+    </>
   )
 }
+
+const tooltip = (title: string, s: number, e: number, extra: string[]) => [`${title} · ${fmtTime(s)}–${fmtTime(e)}`, ...extra].join('\n')
+const clashText = (conflicts: { title: string; start: number; end: number }[]) =>
+  conflicts.length ? [`Clashes with ${conflicts.map((c) => `${c.title} (${fmtTime(c.start)}–${fmtTime(c.end)})`).join(', ')}`] : []
 
 function BlockView({
   block,
@@ -291,23 +328,27 @@ function BlockView({
   conflicts?: DayEvent[]
   onDown?: (e: RPointerEvent, mode: 'move' | 'resize') => void
 }) {
-  const tall = placed.height >= TALL_PX
   const clash = conflicts.length > 0
+  const title = block.title || 'Untitled'
   return (
     <div
-      className={'item block' + (ghost ? ' ghost' : '') + (tall ? '' : ' short') + (clash ? ' conflict' : '')}
+      className={`item block tier-${placed.tier}` + (ghost ? ' ghost' : '') + (clash ? ' conflict' : '')}
       style={{ ...placed.style, ['--c' as string]: block.color }}
-      title={clash ? `Clashes with ${conflicts.map((c) => `${c.title} (${fmtTime(c.start)}–${fmtTime(c.end)})`).join(', ')}` : undefined}
+      title={ghost ? undefined : tooltip(title, block.start, block.end, clashText(conflicts))}
       onPointerDown={(e) => {
         if (e.button !== 0 || !onDown) return
         e.stopPropagation()
         onDown(e, 'move')
       }}
     >
-      <ItemText title={block.title || 'Untitled'} s={block.start} e={block.end} tall={tall} clash={clash} />
-      {placed.showIcon && (
-        <ActivityIcon className="item-icon" name={block.icon} weight={block.iconWeight} size={24} />
-      )}
+      <ItemContent
+        title={title}
+        s={block.start}
+        e={block.end}
+        placed={placed}
+        clash={clash}
+        icon={(size, className) => <ActivityIcon className={className} name={block.icon} weight={block.iconWeight} size={size} />}
+      />
       {onDown && (
         <div
           className="resize-handle"
@@ -323,16 +364,24 @@ function BlockView({
 }
 
 function EventView({ event, placed, conflict }: { event: DayEvent; placed: Placed; conflict: boolean }) {
-  const tall = placed.height >= TALL_PX
   return (
     <div
-      className={'item cal-event' + (tall ? '' : ' short') + (conflict ? ' conflict' : '')}
+      className={`item cal-event tier-${placed.tier}` + (conflict ? ' conflict' : '')}
       style={{ ...placed.style, ['--c' as string]: event.color }}
-      title={`${event.title}\n${event.calendar} · ${fmtTime(event.start)}–${fmtTime(event.end)}\nFrom Apple Calendar (change it there)`}
+      title={tooltip(event.title, event.start, event.end, [
+        ...(conflict ? ['Clashes with one of your blocks'] : []),
+        `From Apple Calendar (${event.calendar}); change it there`,
+      ])}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <ItemText title={event.title} s={event.start} e={event.end} tall={tall} clash={conflict} />
-      {placed.showIcon && <CalendarBlankIcon className="item-icon" size={24} weight="bold" />}
+      <ItemContent
+        title={event.title}
+        s={event.start}
+        e={event.end}
+        placed={placed}
+        clash={conflict}
+        icon={(size, className) => <CalendarBlankIcon className={className} size={size} weight="bold" aria-hidden />}
+      />
     </div>
   )
 }

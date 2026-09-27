@@ -43,10 +43,11 @@ src/
   App.tsx                 state wiring, ALL drag logic (bank→grid, move, resize, drag-to-create), templates, undo keys
   lib/types.ts            Activity, Block, Template, TemplateBlock (all with optional icon/iconWeight), AppData (version: 2)
   lib/store.ts            useAppData(): load (→ migrate) / save + undo/redo history (reducer: past/present/future), student seed
-  lib/migrate.ts          migrate(raw): bring any older saved file up to date (v1→v2 colour map). MUST open every old file
+  lib/migrate.ts          migrate(raw): bring any older saved file up to date (v1→v2 colours, v2→v3 icons). MUST open every old file
   lib/icons.ts            from the design handoff: BASE_ICONS (12), ICON_CATEGORIES, searchIcons, PALETTE, COLOR_MIGRATION,
-                          SEED_ACTIVITIES, DAY range constants
-  lib/iconMap.ts          GENERATED explicit name→Phosphor component map (tree-shaking); regenerate if icons.ts lists change
+                          SEED_ACTIVITIES, DAY range constants, guessIcon(name) (ordered regexes), discIcon()
+  lib/iconMap.ts          GENERATED explicit name→Phosphor component map (tree-shaking); regenerate if icons.ts lists change.
+                          Dev builds throw if any category/guess icon is missing from it
   lib/dayRange.ts         visibleRange(items, targets): which hours the grid shows + the Earlier/Later/auto-note state
   lib/storage.ts          loadData/saveData/revealDataFolder: Tauri invoke vs localStorage. Only place that knows where data lives
   components/SaveIndicator.tsx  sidebar footer: "✓ All changes saved" / "Show files" / save error + retry
@@ -142,21 +143,33 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - `Template.blocks[].day` is 0 = Monday … 6 = Sunday.
 - Bump `AppData.version` and add a step in `lib/migrate.ts` if the shape changes (runs on every load, before anything saves).
 - Colours are stored as hex; v2 uses the pastel PALETTE. Unknown colours are kept as-is.
+- Icons (v3): missing icons are filled on load (activities: guessIcon(name); blocks: the same-named activity's icon, else
+  guessIcon(title)). Set icons are never overwritten. Discs/chips show `discIcon()` = icon ?? guess ?? star (no letters).
+- **Changing an activity's icon/style updates its blocks** (weeks, templates, draft) whose title matches the activity's
+  old or new name (trimmed, case-insensitive) and whose icon is empty or still the activity's old icon. Blocks she gave a
+  different icon by hand keep it. Same update → one undo step (`saveActivity()` in App.tsx).
+- Editors suggest an icon from the name as she types (guessIcon) until she picks one (tile, library or activity chip).
 
 ### Design system (2026-09-27 redesign, "pastel neo-brutalist")
 - Source of truth: `design_handoff_timetable_redesign/` (README.md = spec with exact values; `Timetable Brand Kit.dc.html`
   = mockup, view it via the dev server at /design_handoff_timetable_redesign/Timetable%20Brand%20Kit.dc.html). Lint ignores it.
+- **FIXES.md in the handoff folder overrides README.md where they disagree** (all 5 fixes done 2026-09-27).
 - Tokens live in `src/index.css :root`: ink/paper/canvas, grape (primary) / coral (danger) / mint / sky (calendar) /
   lemon (today, templates); borders 2.5px (2px blocks); radii 12/18/10; solid ink offset shadows, never blurred.
   Hover lifts 1px, press sinks 2px, disabled = dashed + 50%. Light mode only (dark mode dropped for now).
 - Fonts bundled from npm (@fontsource-variable/bricolage-grotesque opsz, @fontsource/dm-mono 400/500): works offline.
   Times/durations use DM Mono (`.mono`).
 - Icons: @phosphor-icons/react, `<Name>Icon` exports, weight bold for UI. Activity icons may be bold/fill/duotone.
-- Window: Tauri `titleBarStyle: Overlay` + `hiddenTitle`; a 40px `data-tauri-drag-region` band sits under the traffic lights
-  (needs `core:window:allow-start-dragging`). Min window 1100×680; below ~880px of main width the toolbar goes
-  icon-only via a container query.
-- Blocks: <38px tall → one line (title + start); icon bottom-right only when alone in its lane and ≥50px
-  (≥64px when day columns are narrower than 140px, so it never sits on the time text).
+- Window: Tauri `titleBarStyle: Overlay` + `hiddenTitle`, `trafficLightPosition {x:34,y:30}` puts the real window buttons in
+  the pink sidebar header (a 52×14 `.traffic-light-space` replaces the decorative dots there in Tauri; browser keeps dots).
+  No top band. `data-tauri-drag-region` on the sidebar header and toolbar (+ their non-button children); needs
+  `core:window:allow-start-dragging`. Min window 1100×680; below ~880px of main width the toolbar goes icon-only.
+- Blocks/events: four tiers by box height H = minutes·pxPerMin − 3 (WeekGrid `tierFor`): tiny <24 (icon+title, no time),
+  short 24–43 (one line + start time unless sharing a lane), medium 44–71 (two lines, inline icon), tall ≥72 (two lines +
+  24px icon bottom-right; inline icon if sharing a lane). One-line tiers are vertically centred. A clash warning replaces
+  the inline icon. Tiny content shrinks to the box and hides below 9px (30m at 1100×680) — the tooltip
+  (`Title · 9:00–10:00` + clash/calendar lines) always has it. At her ~1450×820 window 1h ≈ 41px (short), 30m tiny,
+  1½h medium, 2h+ tall. A browser check found no text touching a border at 1450×820, 1440×900, 1100×680.
 
 ## Current status (2026-09-27)
 
@@ -173,6 +186,10 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - [x] Persistence: native app tested for migration, corrupt-file recovery, deleted-file recovery, backup pruning (60)
 - [x] Save status indicator in sidebar + "Show files" (opens the data folder in Finder)
 - [x] Activity lengths: 15m, then 30m steps up to 5h, plus "Custom…" (hours + 0/15/30/45 minutes)
+- [x] FIXES.md (2026-09-27): block height tiers, icons everywhere (guess + v3 migration + follow-through + suggestions),
+      segmented control, native traffic lights in the sidebar header, icon library opens on the icon's category.
+      Browser-verified at 3 sizes; migration verified on a real v1 copy, a crafted v2 file, and the real dev file on disk.
+      **Traffic-light position not yet eyeballed in the native window** (tune trafficLightPosition if off).
 - [x] "Create a template" from a blank week (browser-tested: build, save, apply, restart with draft, discard)
 - [x] 2026-09-27 redesign implemented per handoff: tokens, fonts, Phosphor icons, fit-to-height grid with
       Earlier/Later + auto-widen note, icon library, data v2 migration (verified on a real v1 file on disk), new app icon,
@@ -216,3 +233,6 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-09-27**: "Create a template" builds a template on a blank week (`templateDraft`). Not yet released.
 - **2026-09-27**: Fix: Calendar sync never prompted for access (hardened runtime without the calendars entitlement).
   Added `src-tauri/Entitlements.plist`. Not yet released.
+- **2026-09-27**: FIXES.md round: 4-tier block layout, activity icons guessed from names (data v3 migration, follow-through
+  on icon edits, live suggestions, no letter discs), Duotone segment fix, real traffic lights in the sidebar header (no top
+  band), icon library opens on the current icon's category. Handoff folder replaced by the updated one. Not yet released.

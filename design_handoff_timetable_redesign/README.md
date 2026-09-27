@@ -25,6 +25,7 @@ All existing behaviour in STATUS.md stays (drag/move/resize, templates, undo, ca
   to regenerate `src-tauri/icons/*` (png, icns, ico). Also use it for `public/favicon.png`. Options 2b/2c in the mockup were rejected.
 - `icons/app-icon-a-blocks.svg` — same icon, referenced by the mockup
 - `icons.ts` — drop into `src/lib/icons.ts` (base set, categories, palette, colour migration map)
+- `FIXES.md` — **review of the first build. Do this next.** Where it disagrees with older notes, FIXES.md wins.
 
 ## Suggested implementation order
 1. Tokens + fonts (bundled locally) + Phosphor icons in `index.css` / package.json
@@ -72,7 +73,7 @@ Unknown colours: keep as is. Blocks render the colour as a **solid fill** (no mo
 
 ## 5. Activity icons (new, optional field)
 Add `icon?: string` (Phosphor name) to `Activity`, `Block`, `TemplateBlock`; copy it like title/colour. Part of the v2 migration
-(no icon = none). Also add `iconWeight?: 'bold'|'fill'|'duotone'` (default bold).
+(missing icons are filled by `guessIcon()`, see FIXES.md #2). Also add `iconWeight?: 'bold'|'fill'|'duotone'` (default bold).
 She is a student — new seed activities (replace store.ts `seed()`):
 Lecture sky chalkboard-teacher 2h · Seminar teal chats-circle 1h · Reading lilac book-open 1h30 · Library lemon books 2h ·
 Essay sand pencil-line 2h · Lunch peach fork-knife 1h · Gym mint barbell 1h · Friends pink users-three 2h.
@@ -102,13 +103,12 @@ MIN_START = 1:00       MAX_END = 23:30       EARLIER_STEP = 120 min
 - Drag/resize/create clamps and BlockEditor `TIMES` use MIN_START..MAX_END (the full possible range), not the visible range.
   Dropping outside the visible range is impossible; the editor can pick any time and the range will then auto-widen.
 - Hour labels every hour (`9:00`), lines 1.5px `--line`. No half-hour lines.
-- Block layout: `height >= 38px` → two lines (title, `9:00–13:00`); icon bottom-right at 24px when height ≥ 50px and not sharing a lane.
-  `< 38px` → one line: title + start time.
+- Block layout: four tiers by box height, see FIXES.md #1 (tiny < 24 · short 24–43 · medium 44–71 · tall ≥ 72). Every block shows its icon.
 
 ## 7. Layout (1440×900 reference; everything scales with window)
-- Tauri: `titleBarStyle: "Overlay"`, `hiddenTitle: true`; 40px drag region (`data-tauri-drag-region`) on top of canvas.
-- Body: canvas, padding 0 16px 16px, gap 16.
-- Sidebar: 264px paper panel. Pink header bar (three 11px dots coral/lemon/mint, "Activities", lemon + button), activities as 52px pastel
+- Tauri: `titleBarStyle: "Overlay"`, `hiddenTitle: true`, native traffic lights moved into the sidebar header (FIXES.md #4). No top band.
+- Body: canvas, padding 16px, gap 16.
+- Sidebar: 264px paper panel. Pink header bar (native traffic lights where the dots were; the browser build shows three 11px dots; "Activities"; lemon + button), activities as 52px pastel
   pills (white icon disc, name, mono duration), hints as a dashed card with 3 icon rows, save pill (mint "All saved" / coral "Couldn't save · Retry"), version.
 - Toolbar: 60px, on canvas (no panel). Left: Today · ‹ · › · week title 28px · Sync. Right: Undo · Redo · Week templates.
 - Grid panel: day header 62px (today = lemon pill with shadow; today column tinted lemon 35%), top expand row 42px, body, bottom expand row 42px.
