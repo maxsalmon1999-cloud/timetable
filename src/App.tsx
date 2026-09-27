@@ -8,6 +8,7 @@ import { Sidebar } from './components/Sidebar'
 import { BlockEditor } from './components/BlockEditor'
 import { TemplatesMenu } from './components/TemplatesMenu'
 import { Confirm } from './components/Modal'
+import { revealDataFolder } from './lib/storage'
 
 type DragKind =
   | { kind: 'bank'; activity: Activity }
@@ -23,11 +24,12 @@ type Confirming = Omit<ComponentProps<typeof Confirm>, 'onClose'>
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
 export default function App() {
-  const { data, update, undo, redo, canUndo, canRedo } = useAppData()
+  const { data, update, undo, redo, canUndo, canRedo, status, retrySave, folder, restoredFrom } = useAppData()
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [drag, setDrag] = useState<Drag | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [confirming, setConfirming] = useState<Confirming | null>(null)
+  const [restoreNoticeSeen, setRestoreNoticeSeen] = useState(false)
   const hitTestRef = useRef<HitTest | null>(null)
   const dragRef = useRef<Drag | null>(null)
   dragRef.current = drag
@@ -61,7 +63,7 @@ export default function App() {
 
   const applyWithChoice = (tbs: TemplateBlock[], what: string) => {
     if (!tbs.length) {
-      setConfirming({ title: 'Nothing to copy', message: `${what} has no blocks.`, actions: [] })
+      setConfirming({ title: 'Nothing to copy', message: `${what} has no blocks.`, actions: [], cancelLabel: 'OK' })
       return
     }
     if (!weekBlocks.length) return placeTemplate(tbs, true)
@@ -189,6 +191,16 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [undo, redo])
 
+  if (status.kind === 'load-failed')
+    return (
+      <div className="loading">
+        <div className="load-failed">
+          <h2>Couldn’t open your saved plans</h2>
+          <p className="muted">Nothing has been changed or deleted. Please quit Timetable and open it again. If this keeps happening, the files are in Documents › Timetable Plans (with daily backups).</p>
+          <p className="muted small">{status.message}</p>
+        </div>
+      </div>
+    )
   if (!data) return <div className="loading">Loading…</div>
 
   const isThisWeek = toISO(weekStart) === toISO(startOfWeek(new Date()))
@@ -207,6 +219,9 @@ export default function App() {
           }))
         }
         onDelete={(id) => update((d) => ({ ...d, activities: d.activities.filter((a) => a.id !== id) }))}
+        saveStatus={status}
+        folder={folder}
+        onRetrySave={retrySave}
       />
 
       <main className="main">
@@ -284,6 +299,15 @@ export default function App() {
             setEditing(null)
           }}
           onClose={() => setEditing(null)}
+        />
+      )}
+      {restoredFrom && !restoreNoticeSeen && (
+        <Confirm
+          title="Restored from backup"
+          message={`Your main save file couldn’t be read, so Timetable opened your most recent backup (${restoredFrom.replace('timetable-', '')}). Nothing else was deleted.`}
+          cancelLabel="OK"
+          actions={[{ label: 'Show files', run: () => revealDataFolder() }]}
+          onClose={() => setRestoreNoticeSeen(true)}
         />
       )}
       {confirming && <Confirm {...confirming} onClose={() => setConfirming(null)} />}

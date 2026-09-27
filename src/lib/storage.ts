@@ -1,40 +1,37 @@
 import type { AppData } from './types'
 
-// One place that knows where data lives: a JSON file in the app's data folder
-// when running inside Tauri, localStorage when running in a plain browser.
+// One place that knows where data lives. Inside the app, Rust owns the files
+// (src-tauri/src/storage.rs: atomic writes + daily backups in ~/Documents/Timetable).
+// In a plain browser (npm run dev) it falls back to localStorage.
 
 const KEY = 'timetable-data-v1'
-const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
-async function tauriStore() {
-  const { load } = await import('@tauri-apps/plugin-store')
-  return load('timetable.json', { defaults: {}, autoSave: false })
+export interface LoadResult {
+  data: AppData | null
+  /** name of the backup used when the main file was missing or damaged */
+  restoredFrom: string | null
+  /** folder holding the data, null in the browser */
+  folder: string | null
 }
 
-export async function loadData(): Promise<AppData | null> {
-  try {
-    if (isTauri) {
-      const store = await tauriStore()
-      return (await store.get<AppData>('data')) ?? null
-    }
-    const raw = localStorage.getItem(KEY)
-    return raw ? (JSON.parse(raw) as AppData) : null
-  } catch (err) {
-    console.error('Could not load data', err)
-    return null
-  }
+async function invoke<T>(cmd: string, args?: Record<string, unknown>) {
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke<T>(cmd, args)
+}
+
+/** Throws if saved data exists but can't be read. Callers must not save after a failed load. */
+export async function loadData(): Promise<LoadResult> {
+  if (isTauri) return invoke<LoadResult>('load_data')
+  const raw = localStorage.getItem(KEY)
+  return { data: raw ? (JSON.parse(raw) as AppData) : null, restoredFrom: null, folder: null }
 }
 
 export async function saveData(data: AppData) {
-  try {
-    if (isTauri) {
-      const store = await tauriStore()
-      await store.set('data', data)
-      await store.save()
-      return
-    }
-    localStorage.setItem(KEY, JSON.stringify(data))
-  } catch (err) {
-    console.error('Could not save data', err)
-  }
+  if (isTauri) await invoke('save_data', { data })
+  else localStorage.setItem(KEY, JSON.stringify(data))
+}
+
+export async function revealDataFolder() {
+  if (isTauri) await invoke('reveal_data_folder')
 }

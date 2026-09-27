@@ -276,7 +276,7 @@ kbd { font-family: inherit; border: 1px solid var(--line); border-radius: 4px; p
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; flex: 1; }
 .field > span { font-size: 12px; font-weight: 500; color: var(--muted); }
 .field-row { display: flex; gap: 12px; }
-input:not([type]), input[type='text'], select {
+input:not([type]), input[type='text'], input[type='number'], select {
   border: 1px solid var(--line);
   background: var(--bg);
   border-radius: 7px;
@@ -304,3 +304,21 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px c
 }
 .chip:hover { background: var(--bg-hover); }
 .chip.selected { border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, var(--bg)); }
+
+/* ---------- save status ---------- */
+.save-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 4px 0;
+  border-top: 1px solid var(--line);
+}
+.save-status.error { color: var(--danger); flex-direction: column; align-items: flex-start; }
+.link { border: none; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: 12px; }
+.link:hover { text-decoration: underline; }
+.load-failed { max-width: 420px; text-align: center; padding: 24px; line-height: 1.5; }
+.load-failed h2 { font-size: 17px; color: var(--text); margin-bottom: 8px; }
+.small { font-size: 11px; }

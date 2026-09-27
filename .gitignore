@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# app data, in case the app is run on the dev machine
+/timetable.json
+/Backups/
+timetable-damaged-*.json

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { loadData, saveData } from './storage'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { loadData, saveData, type LoadResult } from './storage'
 import type { AppData } from './types'
 import { uid } from './constants'
 
@@ -55,23 +55,63 @@ function reducer(s: State, a: Action): State {
   }
 }
 
+export type SaveStatus =
+  | { kind: 'loading' }
+  | { kind: 'load-failed'; message: string }
+  | { kind: 'saving' }
+  | { kind: 'saved' }
+  | { kind: 'error'; message: string }
+
 export function useAppData() {
   const [state, dispatch] = useReducer(reducer, { past: [], present: null, future: [] })
-  const loaded = useRef(false)
+  const [status, setStatus] = useState<SaveStatus>({ kind: 'loading' })
+  const [info, setInfo] = useState<Omit<LoadResult, 'data'>>({ restoredFrom: null, folder: null })
+  // only ever save after a successful load, so a read failure can't overwrite real data
+  const canSave = useRef(false)
+  const pending = useRef<AppData | null>(null)
+  const running = useRef(false)
 
   useEffect(() => {
-    loadData().then((d) => {
-      loaded.current = true
-      dispatch({ type: 'load', data: d ?? seed() })
-    })
+    loadData()
+      .then((r) => {
+        canSave.current = true
+        setInfo({ restoredFrom: r.restoredFrom, folder: r.folder })
+        dispatch({ type: 'load', data: r.data ?? seed() })
+      })
+      .catch((e) => setStatus({ kind: 'load-failed', message: String(e) }))
   }, [])
 
-  // save shortly after each change
+  // Saves run one at a time; if several changes arrive mid-save only the latest is written.
+  const pump = useCallback(async () => {
+    if (running.current) return
+    running.current = true
+    while (pending.current) {
+      const d = pending.current
+      pending.current = null
+      try {
+        await saveData(d)
+        if (!pending.current) setStatus({ kind: 'saved' })
+      } catch (e) {
+        setStatus({ kind: 'error', message: String(e) })
+      }
+    }
+    running.current = false
+  }, [])
+
+  // Save every change straight away (changes are discrete user actions, never per-frame)
   useEffect(() => {
-    if (!loaded.current || !state.present) return
-    const t = setTimeout(() => saveData(state.present!), 300)
-    return () => clearTimeout(t)
-  }, [state.present])
+    if (!canSave.current || !state.present) return
+    pending.current = state.present
+    setStatus({ kind: 'saving' })
+    pump()
+  }, [state.present, pump])
+
+  const retrySave = useCallback(() => {
+    if (!canSave.current || !state.present) return
+    pending.current = state.present
+    setStatus({ kind: 'saving' })
+    pump()
+  }, [state.present, pump])
 
   const update = useCallback((fn: (d: AppData) => AppData) => dispatch({ type: 'update', fn }), [])
   const undo = useCallback(() => dispatch({ type: 'undo' }), [])
@@ -84,5 +124,8 @@ export function useAppData() {
     redo,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
+    status,
+    retrySave,
+    ...info,
   }
 }

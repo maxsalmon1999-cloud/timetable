@@ -19,6 +19,7 @@ export const COLORS = [
   '#8A8F98', // grey
 ]
 
-export const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480]
+/** preset lengths for activities: 15m, then every half hour up to 5h (anything else is 'Custom') */
+export const DURATIONS = [15, ...Array.from({ length: 10 }, (_, i) => (i + 1) * 30)]
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)

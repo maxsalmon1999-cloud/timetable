@@ -3,15 +3,20 @@ import type { Activity } from '../lib/types'
 import { fmtDuration } from '../lib/dates'
 import { ActivityEditor } from './ActivityEditor'
 import { Confirm } from './Modal'
+import { SaveIndicator } from './SaveIndicator'
+import type { SaveStatus } from '../lib/store'
 
 interface Props {
   activities: Activity[]
   onDragStart: (e: RPointerEvent, a: Activity) => void
   onSave: (a: Activity) => void
   onDelete: (id: string) => void
+  saveStatus: SaveStatus
+  folder: string | null
+  onRetrySave: () => void
 }
 
-export function Sidebar({ activities, onDragStart, onSave, onDelete }: Props) {
+export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus, folder, onRetrySave }: Props) {
   const [editing, setEditing] = useState<Activity | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Activity | null>(null)
 
@@ -43,6 +48,8 @@ export function Sidebar({ activities, onDragStart, onSave, onDelete }: Props) {
         <p><b>Drag a block</b> to move it, or its bottom edge to resize. Hold <kbd>⌥</kbd> while dropping to copy.</p>
         <p><b>Click a block</b> to rename, recolour or delete.</p>
       </div>
+
+      <SaveIndicator status={saveStatus} folder={folder} onRetry={onRetrySave} />
 
       {editing && (
         <ActivityEditor

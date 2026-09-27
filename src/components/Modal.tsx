@@ -38,10 +38,12 @@ export function Confirm({
   title,
   message,
   actions,
+  cancelLabel = 'Cancel',
   onClose,
 }: {
   title: string
   message: string
+  cancelLabel?: string
   actions: { label: string; kind?: 'primary' | 'danger'; run: () => void }[]
   onClose: () => void
 }) {
@@ -49,7 +51,7 @@ export function Confirm({
     <Modal title={title} onClose={onClose}>
       <p className="muted">{message}</p>
       <div className="modal-actions">
-        <button className="btn" onClick={onClose}>Cancel</button>
+        <button className={'btn' + (actions.length ? '' : ' primary')} onClick={onClose}>{cancelLabel}</button>
         {actions.map((a) => (
           <button
             key={a.label}
