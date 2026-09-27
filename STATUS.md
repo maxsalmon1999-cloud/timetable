@@ -101,6 +101,9 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - All-day events show in an "all-day" row under the day headers; they never count as conflicts.
 - Timed events entirely outside 1:00–23:30 aren't shown; others widen the visible day like blocks do.
 - The bundle is ad-hoc signed (`bundle.macOS.signingIdentity: "-"`) so macOS permissions attach to `com.maxsalmon.timetable`.
+- **The bundle uses the hardened runtime, so `src-tauri/Entitlements.plist` must keep
+  `com.apple.security.personal-information.calendars`.** Without it macOS silently denies calendar access: no prompt,
+  and the app never appears under Privacy & Security → Calendars (bug found 2026-09-27).
   Because it's ad-hoc, each new build may re-ask for Calendar/Documents access.
 
 ### Releases & auto-update
@@ -211,3 +214,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   day that auto-widens (+ Earlier / + Later), data v2 (pastel colours, icon fields) with v1 migration, new app icon,
   overlay title bar. Not yet released.
 - **2026-09-27**: "Create a template" builds a template on a blank week (`templateDraft`). Not yet released.
+- **2026-09-27**: Fix: Calendar sync never prompted for access (hardened runtime without the calendars entitlement).
+  Added `src-tauri/Entitlements.plist`. Not yet released.
