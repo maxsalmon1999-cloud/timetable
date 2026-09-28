@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode, type RefObject } from 'react'
 import { CalendarBlankIcon, MinusIcon, PlusIcon, SparkleIcon, WarningIcon } from '@phosphor-icons/react'
 import type { Block, IconWeight } from '../lib/types'
 import { fmtTime, fromISO, toISO } from '../lib/dates'
@@ -7,6 +7,7 @@ import { overlaps, type CalEvent, type DayEvent } from '../lib/calendar'
 import type { DayRange } from '../lib/dayRange'
 import { MAX_END } from '../lib/constants'
 import { ActivityIcon } from './ActivityIcon'
+import { BlockCard, EventCard, type Anchor } from './HoverCard'
 
 export interface Hit {
   date: string
@@ -88,9 +89,10 @@ export function WeekGrid(p: Props) {
   for (let h = Math.ceil(start / 60); h * 60 <= end; h++) hours.push(h)
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const hasAllDay = days.some((d) => d.allDay.length > 0)
+  const hover = useHover()
 
   return (
-    <div className={"grid-card panel" + (p.blank ? " blank" : "")}>
+    <div className={"grid-card panel" + (p.blank ? " blank" : "")} onPointerDownCapture={hover.hide}>
       <div className="grid-head">
         <div />
         {dates.map((d) => {
@@ -112,7 +114,7 @@ export function WeekGrid(p: Props) {
           {days.map(({ allDay }, i) => (
             <div key={dates[i]} className="allday-cell">
               {allDay.map((ev) => (
-                <div key={ev.id} className="allday-event" style={{ ['--c' as string]: ev.color }} title={`${ev.title}\n${ev.calendar}`}>
+                <div key={ev.id} className="allday-event" style={{ ['--c' as string]: ev.color }} {...hover.on({ kind: 'allday', id: ev.id, day: i })}>
                   {ev.title}
                 </div>
               ))}
@@ -182,7 +184,13 @@ export function WeekGrid(p: Props) {
                     }}
                   >
                     {dayEvents.map((ev) => (
-                      <EventView key={ev.id} event={ev} placed={place(ev.id, ev.start, ev.end)} conflict={dayBlocks.some((b) => overlaps(b, ev))} />
+                      <EventView
+                        key={ev.id}
+                        event={ev}
+                        placed={place(ev.id, ev.start, ev.end)}
+                        conflict={dayBlocks.some((b) => overlaps(b, ev))}
+                        hover={hover.on({ kind: 'event', id: ev.id, day: i })}
+                      />
                     ))}
                     {dayBlocks.map((b) => (
                       <BlockView
@@ -191,6 +199,7 @@ export function WeekGrid(p: Props) {
                         placed={place(b.id, b.start, b.end)}
                         conflicts={dayEvents.filter((ev) => overlaps(b, ev))}
                         onDown={(e, mode) => p.onBlockDown(e, b, mode)}
+                        hover={hover.on({ kind: 'block', id: b.id, day: i })}
                       />
                     ))}
                     {preview && preview.date === d && (
@@ -208,6 +217,7 @@ export function WeekGrid(p: Props) {
           </>
         )}
       </div>
+      {hover.target && <HoverDetails target={hover.target} {...p} />}
 
       <div className="expand-row bottom">
         <div />
@@ -274,7 +284,7 @@ function ItemContent({
   const { tier, shared } = placed
   const bigIcon = tier === 'tall' && !shared
   // Tiny boxes can be very thin in small windows (30m ≈ 12px at 1100×680): shrink to fit the inside
-  // (box − 2px borders top and bottom), and drop what would be illegible. The tooltip still says it all.
+  // (box − 2px borders top and bottom), and drop what would be illegible. The hover card still says it all.
   const room = placed.height - 5
   const iconSize = tier === 'tiny' ? Math.min(13, room) : tier === 'short' ? 13 : 15
   const textSize = Math.min(12, room)
@@ -311,22 +321,20 @@ function ItemContent({
   )
 }
 
-const tooltip = (title: string, s: number, e: number, extra: string[]) => [`${title} · ${fmtTime(s)}–${fmtTime(e)}`, ...extra].join('\n')
-const clashText = (conflicts: { title: string; start: number; end: number }[]) =>
-  conflicts.length ? [`Clashes with ${conflicts.map((c) => `${c.title} (${fmtTime(c.start)}–${fmtTime(c.end)})`).join(', ')}`] : []
-
 function BlockView({
   block,
   placed,
   ghost,
   conflicts = [],
   onDown,
+  hover,
 }: {
   block: Block
   placed: Placed
   ghost?: boolean
   conflicts?: DayEvent[]
   onDown?: (e: RPointerEvent, mode: 'move' | 'resize') => void
+  hover?: HoverHandlers
 }) {
   const clash = conflicts.length > 0
   const title = block.title || 'Untitled'
@@ -334,7 +342,7 @@ function BlockView({
     <div
       className={`item block tier-${placed.tier}` + (ghost ? ' ghost' : '') + (clash ? ' conflict' : '')}
       style={{ ...placed.style, ['--c' as string]: block.color }}
-      title={ghost ? undefined : tooltip(title, block.start, block.end, clashText(conflicts))}
+      {...hover}
       onPointerDown={(e) => {
         if (e.button !== 0 || !onDown) return
         e.stopPropagation()
@@ -363,15 +371,12 @@ function BlockView({
   )
 }
 
-function EventView({ event, placed, conflict }: { event: DayEvent; placed: Placed; conflict: boolean }) {
+function EventView({ event, placed, conflict, hover }: { event: DayEvent; placed: Placed; conflict: boolean; hover: HoverHandlers }) {
   return (
     <div
       className={`item cal-event tier-${placed.tier}` + (conflict ? ' conflict' : '')}
       style={{ ...placed.style, ['--c' as string]: event.color }}
-      title={tooltip(event.title, event.start, event.end, [
-        ...(conflict ? ['Clashes with one of your blocks'] : []),
-        `From Apple Calendar (${event.calendar}); change it there`,
-      ])}
+      {...hover}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <ItemContent
@@ -384,6 +389,83 @@ function EventView({ event, placed, conflict }: { event: DayEvent; placed: Place
       />
     </div>
   )
+}
+
+interface HoverTarget {
+  kind: 'block' | 'event' | 'allday'
+  id: string
+  /** column index */
+  day: number
+  anchor: Anchor
+}
+type HoverHandlers = { onPointerEnter: (e: RPointerEvent<HTMLElement>) => void; onPointerLeave: () => void }
+
+/**
+ * Which item the mouse rests on. The card appears after a short pause and goes the moment the mouse leaves;
+ * sliding straight from one item to the next swaps it at once. Nothing shows while a button is held (drags).
+ */
+function useHover() {
+  const [target, setTarget] = useState<HoverTarget | null>(null)
+  const timer = useRef(0)
+  const shown = useRef(false)
+  const hiddenAt = useRef(-Infinity)
+
+  const hide = useCallback(() => {
+    clearTimeout(timer.current)
+    if (shown.current) hiddenAt.current = performance.now()
+    shown.current = false
+    setTarget(null)
+  }, [])
+
+  useEffect(() => {
+    // leaving the window can skip pointerleave; resizing, or a key like ⌘Z, can move the item from under the card
+    const events = ['blur', 'resize', 'keydown'] as const
+    events.forEach((ev) => window.addEventListener(ev, hide))
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, hide))
+      clearTimeout(timer.current)
+    }
+  }, [hide])
+
+  const on = (t: Omit<HoverTarget, 'anchor'>): HoverHandlers => ({
+    onPointerEnter: (e) => {
+      if (e.buttons || e.pointerType === 'touch') return
+      clearTimeout(timer.current)
+      const el = e.currentTarget
+      const show = () => {
+        const item = el.getBoundingClientRect()
+        const col = (el.parentElement ?? el).getBoundingClientRect()
+        shown.current = true
+        setTarget({ ...t, anchor: { top: item.top, left: col.left, right: col.right } })
+      }
+      if (performance.now() - hiddenAt.current < 300) show()
+      else timer.current = window.setTimeout(show, 350)
+    },
+    onPointerLeave: hide,
+  })
+
+  return { target, hide, on }
+}
+
+/** Looks the hovered item up in the current data, so the card is never stale (and vanishes if it was undone away) */
+function HoverDetails({ target, blocks, days, dates, hiddenId, blank }: { target: HoverTarget } & Props) {
+  const eventsOn = (day: number) => days[day] ?? { timed: [], allDay: [] }
+  const { timed, allDay } = eventsOn(target.day)
+  const date = dates[target.day]
+  if (target.kind === 'block') {
+    const b = blocks.find((x) => x.id === target.id)
+    if (!b || b.id === hiddenId) return null
+    const clashes = eventsOn(dates.indexOf(b.date)).timed.filter((ev) => overlaps(b, ev))
+    return <BlockCard block={b} anchor={target.anchor} blank={blank} clashes={clashes} />
+  }
+  if (target.kind === 'event') {
+    const ev = timed.find((x) => x.id === target.id)
+    if (!ev) return null
+    const clashes = blocks.filter((b) => b.date === date && b.id !== hiddenId && overlaps(b, ev))
+    return <EventCard event={ev.source} anchor={target.anchor} clashes={clashes} />
+  }
+  const ev = allDay.find((x) => x.id === target.id)
+  return ev ? <EventCard event={ev} anchor={target.anchor} /> : null
 }
 
 function useSize(el: HTMLElement | null) {

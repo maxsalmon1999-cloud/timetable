@@ -380,6 +380,37 @@ h1, h2, p { margin: 0; }
   font-size: 15px;
 }
 
+/* hover card: details beside a block or calendar event (components/HoverCard.tsx) */
+.hover-card {
+  position: fixed;
+  z-index: 60;
+  width: max-content;
+  min-width: 190px;
+  max-width: 280px;
+  pointer-events: none;
+  background: var(--paper);
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--r-control);
+  box-shadow: var(--sh-hover);
+  overflow: hidden;
+  animation: hover-in 0.1s ease-out;
+}
+@keyframes hover-in { from { opacity: 0; transform: translateY(3px); } }
+.hover-head { display: flex; align-items: flex-start; gap: 8px; padding: 9px 12px; background: var(--c); border-bottom: 2px solid var(--ink); }
+.hover-head.cal { background: color-mix(in srgb, var(--c) 45%, var(--paper)); }
+.hover-head svg { flex-shrink: 0; margin-top: 1px; }
+.hover-title { font-size: 15px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.hover-body { display: flex; flex-direction: column; gap: 7px; padding: 9px 12px 10px; font-size: 13px; line-height: 1.3; }
+.hover-when { font-weight: 600; }
+.hover-card .mono { font-size: 12.5px; white-space: nowrap; }
+.hover-row { display: flex; align-items: flex-start; gap: 7px; }
+.hover-row svg { flex-shrink: 0; margin-top: 1px; }
+.hover-row.clash { color: var(--clash-ink); font-weight: 700; }
+.hover-clamp { min-width: 0; overflow-wrap: anywhere; white-space: pre-line; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.hover-clamp.notes { -webkit-line-clamp: 6; }
+.hover-foot { display: flex; align-items: center; gap: 6px; font-size: 11.5px; opacity: 0.75; }
+.hover-dot { width: 9px; height: 9px; flex-shrink: 0; border-radius: 50%; background: var(--c); border: 1.5px solid var(--ink); }
+
 /* ---------- modals ---------- */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(33, 28, 51, 0.35); display: grid; place-items: center; z-index: 100; animation: fade 0.12s ease-out; }
 @keyframes fade { from { opacity: 0; } }

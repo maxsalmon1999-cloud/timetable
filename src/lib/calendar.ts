@@ -11,6 +11,9 @@ export interface CalEvent {
   start: number
   end: number
   allDay: boolean
+  /** shown in the hover card; null when empty (absent in the browser sample events) */
+  location?: string | null
+  notes?: string | null
 }
 
 /** A timed calendar event cut to one day, in minutes from midnight */
@@ -21,6 +24,8 @@ export interface DayEvent {
   color: string
   start: number
   end: number
+  /** the whole event, for the hover card (real times when it runs past midnight, location, notes) */
+  source: CalEvent
 }
 
 export type Access = 'granted' | 'notDetermined' | 'denied' | 'restricted' | 'writeOnly' | 'unsupported'
@@ -65,7 +70,7 @@ export function eventsForDay(events: CalEvent[], date: string) {
     const start = ev.start <= dayStart ? 0 : minutesOf(ev.start)
     const end = ev.end >= dayEnd ? 24 * 60 : minutesOf(ev.end)
     if (end <= MIN_START || start >= MAX_END) continue // outside the hours the grid can ever show
-    timed.push({ id: `${ev.id}|${date}`, title: ev.title, calendar: ev.calendar, color: ev.color, start, end: Math.max(end, start + 15) })
+    timed.push({ id: `${ev.id}|${date}`, title: ev.title, calendar: ev.calendar, color: ev.color, start, end: Math.max(end, start + 15), source: ev })
   }
   return { timed, allDay }
 }
@@ -80,13 +85,16 @@ function sampleEvents(weekStart: Date): CalEvent[] {
     d.setHours(h, m, 0, 0)
     return d.getTime()
   }
-  const ev = (id: string, title: string, day: number, sh: number, sm: number, eh: number, em: number, color = '#FF2D55') => ({
-    id, title, calendar: 'Sample calendar (browser only)', color, start: at(day, sh, sm), end: at(day, eh, em), allDay: false,
+  const ev = (id: string, title: string, day: number, sh: number, sm: number, eh: number, em: number, color = '#FF2D55', more: Partial<CalEvent> = {}) => ({
+    id, title, calendar: 'Sample calendar (browser only)', color, start: at(day, sh, sm), end: at(day, eh, em), allDay: false, ...more,
   })
   return [
-    ev('s1', 'Dentist', 1, 10, 30, 11, 30),
+    ev('s1', 'Dentist', 1, 10, 30, 11, 30, undefined, {
+      location: 'Smile Dental, 12 High Street',
+      notes: 'Check-up and clean. Bring the new insurance card.\nCancel 24h ahead or they charge.',
+    }),
     ev('s2', 'Call with Mum', 2, 18, 0, 18, 45, '#34C759'),
-    ev('s3', 'Dinner with friends', 3, 19, 0, 21, 30, '#AF52DE'),
+    ev('s3', 'Dinner with friends at the new Lebanese place on Chapel Street', 3, 19, 0, 21, 30, '#AF52DE', { location: 'Yalla, Chapel Street' }),
     ev('s4', 'Team meeting', 0, 9, 30, 10, 30, '#007AFF'),
     ev('s5', 'Team meeting', 4, 9, 30, 10, 30, '#007AFF'),
     { id: 's6', title: 'Bank holiday', calendar: 'UK Holidays', color: '#34C759', start: at(4, 0), end: at(5, 0), allDay: true },

@@ -56,6 +56,8 @@ src/
   lib/layout.ts           side-by-side lanes for overlapping blocks
   components/WeekGrid.tsx fit-to-height grid (pxPerMin = measured body height ÷ visible minutes), expand rows, blocks/events,
                           clash rings, hitTest (pointer → {date, minute}) exposed via ref
+  components/HoverCard.tsx      details card beside a hovered block / calendar event / all-day event (portal, fixed,
+                                pointer-events none). Hover state + lookup live in WeekGrid (useHover, HoverDetails)
   components/ActivityIcon.tsx   renders an icon by name (or first-letter fallback in discs)
   components/IconLibrary.tsx    search + category pills + icon grid (activity editor, block editor "More icons…")
   components/Sidebar.tsx  activity bank + usage hints + save pill + version
@@ -92,6 +94,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 
 ### Apple Calendar (read-only)
 - EventKit reads whatever Calendar.app on that Mac has (iCloud, Google, Exchange, subscribed). Birthdays calendar skipped.
+  Per event: title, calendar name + colour, start/end, all-day, location, notes (the last two only feed the hover card).
 - Needs "Full Access" (macOS 14+ `requestFullAccessToEventsWithCompletion`, older `requestAccessToEntityType`).
   Denied → modal with "Open System Settings" (Privacy & Security → Calendars).
 - `AppData.syncedWeeks` (Monday ISO dates) records which weeks she synced; it's undoable like any change.
@@ -136,6 +139,16 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - The draft is part of saved data, so it's undoable and survives a crash/restart (app reopens in template mode).
   The name is UI state only (blank after restart). Save → `templates` gets it, draft removed. Cancel with blocks → confirm.
 
+### Hover card (2026-09-28)
+- Resting the mouse on a block, calendar event or all-day event for 350 ms shows a card: full title (wrapped), day +
+  time range + length, clashes by name and time; calendar events add location, notes (clamped 3/6 lines) and the calendar.
+  Replaced the native `title` tooltips. Template mode shows the weekday only ("Wednesday").
+- Placed beside the item's day column (right, or left when there's no room), level with the item's top, kept in the window.
+  Anchored to the column rather than the item so it doesn't cover a clashing neighbour in the next lane.
+- Goes the moment the mouse leaves; sliding straight to another item swaps it instantly (300 ms grace). Never shows while
+  a button is held (drags), hides on any pointer-down in the grid, key press, window blur or resize.
+- Content is looked up live by id (`HoverDetails`), so an undo that removes the item removes the card.
+
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
   so editing or deleting an activity never changes existing blocks.
@@ -167,11 +180,10 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - Blocks/events: four tiers by box height H = minutes·pxPerMin − 3 (WeekGrid `tierFor`): tiny <24 (icon+title, no time),
   short 24–43 (one line + start time unless sharing a lane), medium 44–71 (two lines, inline icon), tall ≥72 (two lines +
   24px icon bottom-right; inline icon if sharing a lane). One-line tiers are vertically centred. A clash warning replaces
-  the inline icon. Tiny content shrinks to the box and hides below 9px (30m at 1100×680) — the tooltip
-  (`Title · 9:00–10:00` + clash/calendar lines) always has it. At her ~1450×820 window 1h ≈ 41px (short), 30m tiny,
+  the inline icon. Tiny content shrinks to the box and hides below 9px (30m at 1100×680); the hover card always has it. At her ~1450×820 window 1h ≈ 41px (short), 30m tiny,
   1½h medium, 2h+ tall. A browser check found no text touching a border at 1450×820, 1440×900, 1100×680.
 
-## Current status (2026-09-27)
+## Current status (2026-09-28)
 
 **Working prototype, verified in browser (Chromium pane):**
 - [x] Week navigation (Today / ‹ ›), today highlight, current-time line
@@ -198,6 +210,9 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - [x] Tauri release build (`.app` 10 MB, `.dmg` 3 MB, Apple Silicon), launches, writes `timetable.json` via store plugin
 - [ ] Drag/drop feel inside the native WKWebView not yet hand-tested by a human
 - [ ] "Restored from backup" notice not yet seen in the native window (logic verified via files)
+- [x] Hover card on blocks/events (browser-verified at 1450×820 and 1100×680: delay, instant swap, hide on leave/press/drag,
+      Sunday flips left, template weekday). Calendar location/notes: Rust type-checked for aarch64-apple-darwin, **not yet
+      seen with real EventKit data**. Not yet released.
 - [x] Apple Calendar: sync button + current-week prompt, live refresh, all-day row, conflict highlighting (UI verified in
       browser with sample events; native EventKit build compiles/signs; real-calendar read awaiting Max clicking Allow)
 
@@ -207,7 +222,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 2. Get it onto her Mac: install the latest `Timetable.dmg` (link above); unsigned, so right-click → Open the first time.
    Proper fix: Apple Developer ID signing + notarisation (paid Apple developer account); would also stop permission re-prompts.
 3. Calendar follow-ups if she wants them: choose which calendars to show, "stop syncing this week",
-   click an event to see details / open it in Calendar.app, optionally write blocks back to a "Timetable" calendar.
+   open an event in Calendar.app (details now show on hover), optionally write blocks back to a "Timetable" calendar.
 4. Closing mid-save: saves are immediate + atomic, so at worst the very last action is lost on ⌘Q. Could add a
    close-requested handler that awaits the save queue if this ever matters.
 5. Small niceties if she asks: weekly totals per activity, notes on blocks, configurable day start/end,
@@ -238,3 +253,6 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   band), icon library opens on the current icon's category. Handoff folder replaced by the updated one.
 - **2026-09-27**: **Released v0.3.0** (universal): redesign, icons, create-a-template, FIXES.md round, calendar entitlement fix.
   Installed copies auto-update; fresh installs via the Timetable.dmg link.
+- **2026-09-28**: Hover card: resting the mouse on any block or calendar event shows its full title, day, times, length and
+  clashes; calendar events also show location, notes and calendar (EventKit now reads location + notes). Replaces the
+  native tooltips.

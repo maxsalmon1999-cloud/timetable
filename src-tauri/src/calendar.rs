@@ -14,6 +14,9 @@ pub struct CalEvent {
     start: f64,
     end: f64,
     all_day: bool,
+    /// shown in the hover card; None when empty
+    location: Option<String>,
+    notes: Option<String>,
 }
 
 /// "granted" | "notDetermined" | "denied" | "restricted" | "writeOnly" | "unsupported"
@@ -49,7 +52,7 @@ mod imp {
     use objc2::{available, rc::Retained, runtime::Bool};
     use objc2_app_kit::{NSColor, NSColorSpace};
     use objc2_event_kit::{EKAuthorizationStatus, EKCalendarType, EKEntityType, EKEventStore};
-    use objc2_foundation::{NSArray, NSDate, NSError};
+    use objc2_foundation::{NSArray, NSDate, NSError, NSString};
     use std::sync::mpsc;
 
     pub fn status() -> &'static str {
@@ -120,6 +123,7 @@ mod imp {
                 .map(|e| {
                     let start = e.startDate().timeIntervalSince1970() * 1000.0;
                     let cal = e.calendar();
+                    let text = |s: Option<Retained<NSString>>| s.map(|s| s.to_string().trim().to_string()).filter(|s| !s.is_empty());
                     CalEvent {
                         // recurring events share an identifier, so add the occurrence start
                         id: format!("{}@{}", e.eventIdentifier().map(|s| s.to_string()).unwrap_or_default(), start),
@@ -129,6 +133,8 @@ mod imp {
                         start,
                         end: e.endDate().timeIntervalSince1970() * 1000.0,
                         all_day: e.isAllDay(),
+                        location: text(e.location()),
+                        notes: text(e.notes()),
                     }
                 })
                 .collect())
