@@ -1,0 +1,58 @@
+# Ships an update to her app from one of GitHub's Macs: the same `npm run release` Max runs locally
+# (bump version, universal build, sign, commit + tag on main, GitHub release with latest.json).
+#
+# Run it: GitHub → Actions → Release → Run workflow (or Claude triggers it).
+# Needs the repository secret TAURI_SIGNING_PRIVATE_KEY = the contents of ~/.tauri/timetable.key.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'patch, minor, major, or an exact version like 1.0.0'
+        required: true
+        default: patch
+      notes:
+        description: 'Release notes (optional)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+# never two releases at once
+concurrency: release
+
+jobs:
+  release:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Rust with Intel + Apple Silicon targets
+        run: |
+          rustup update stable
+          rustup default stable
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
+      - run: npm ci
+
+      - name: Build, sign and publish
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          # inputs go through env, never pasted into the script, so notes can contain anything
+          BUMP: ${{ inputs.bump }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/release.mjs "$BUMP" "$NOTES"

@@ -5,9 +5,12 @@
 //   npm run release -- minor "New: …"    # 0.2.1 -> 0.3.0, with release notes
 //   npm run release -- 1.0.0             # explicit version
 //
-// Needs: the updater signing key at ~/.tauri/timetable.key, `gh` logged in, clean git tree on main,
-// and rustup (brew install rustup) with the x86_64-apple-darwin + aarch64-apple-darwin targets, because
-// releases are universal builds (her Mac is Intel). Homebrew's own `rust` can't cross-compile.
+// Needs: the updater signing key at ~/.tauri/timetable.key (or its contents in TAURI_SIGNING_PRIVATE_KEY),
+// `gh` logged in (or GH_TOKEN), clean git tree on main, and rustup with the x86_64-apple-darwin +
+// aarch64-apple-darwin targets, because releases are universal builds (her Mac is Intel). On Max's Mac that's
+// Homebrew's keg-only rustup (Homebrew's own `rust` can't cross-compile); on GitHub's Mac runners it's on PATH.
+//
+// The same script runs remotely from .github/workflows/release.yml (GitHub → Actions → Release → Run workflow).
 
 import { execSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -19,9 +22,9 @@ const KEY = path.join(os.homedir(), '.tauri', 'timetable.key')
 const root = path.resolve(import.meta.dirname, '..')
 const at = (p) => path.join(root, p)
 
-// use rustup's toolchain (keg-only in Homebrew, so not on PATH by default)
+// use rustup's toolchain (keg-only in Homebrew, so not on PATH by default; GitHub's runners have it on PATH)
 const RUSTUP_BIN = '/opt/homebrew/opt/rustup/bin'
-const PATH = `${RUSTUP_BIN}:${process.env.PATH}`
+const PATH = fs.existsSync(RUSTUP_BIN) ? `${RUSTUP_BIN}:${process.env.PATH}` : process.env.PATH
 const run = (cmd, env) => execSync(cmd, { cwd: root, stdio: 'inherit', env: { ...process.env, PATH, ...env } })
 const out = (cmd) => execSync(cmd, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PATH } }).trim()
 const fail = (msg) => {
@@ -32,18 +35,26 @@ const fail = (msg) => {
 const [bump = 'patch', notes = ''] = process.argv.slice(2)
 
 // ---- preflight ----
-if (!fs.existsSync(KEY)) fail(`Update signing key missing (${KEY}). Restore it from your backup; see STATUS.md.`)
+const signingKey = process.env.TAURI_SIGNING_PRIVATE_KEY || (fs.existsSync(KEY) ? fs.readFileSync(KEY, 'utf8') : '')
+if (!signingKey)
+  fail(`Update signing key missing (${KEY}, or the TAURI_SIGNING_PRIVATE_KEY secret on GitHub). Restore it from your backup; see STATUS.md.`)
 if (out('git status --porcelain')) fail('Commit your changes before releasing.')
 if (out('git rev-parse --abbrev-ref HEAD') !== 'main') fail('Releases are made from the main branch.')
+// on GitHub Actions gh uses the workflow's GH_TOKEN, which `gh auth status` can't always describe
+if (!process.env.GH_TOKEN)
+  try {
+    out('gh auth status')
+  } catch {
+    fail('The GitHub CLI is not logged in (run: gh auth login).')
+  }
 try {
-  out('gh auth status')
+  out('rustup --version')
 } catch {
-  fail('The GitHub CLI is not logged in (run: gh auth login).')
+  fail('rustup not found (brew install rustup). Needed for the Intel + Apple Silicon build.')
 }
-if (!fs.existsSync(path.join(RUSTUP_BIN, 'rustup'))) fail('rustup not found (brew install rustup). Needed for the Intel + Apple Silicon build.')
 const targets = out('rustup target list --installed')
 for (const t of ['x86_64-apple-darwin', 'aarch64-apple-darwin'])
-  if (!targets.includes(t)) fail(`Rust target ${t} missing (run: ${RUSTUP_BIN}/rustup target add ${t})`)
+  if (!targets.includes(t)) fail(`Rust target ${t} missing (run: rustup target add ${t})`)
 
 // ---- version ----
 const confPath = at('src-tauri/tauri.conf.json')
@@ -67,7 +78,7 @@ fs.writeFileSync(cargoPath, fs.readFileSync(cargoPath, 'utf8').replace(/^version
 
 // ---- build + sign ----
 try {
-  run('npx tauri build --target universal-apple-darwin', { TAURI_SIGNING_PRIVATE_KEY: fs.readFileSync(KEY, 'utf8'), TAURI_SIGNING_PRIVATE_KEY_PASSWORD: '' })
+  run('npx tauri build --target universal-apple-darwin', { TAURI_SIGNING_PRIVATE_KEY: signingKey, TAURI_SIGNING_PRIVATE_KEY_PASSWORD: '' })
 } catch {
   run(`git checkout -- ${versioned.join(' ')}`)
   fail('Build failed; version bump undone.')

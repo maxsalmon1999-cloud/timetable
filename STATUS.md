@@ -34,6 +34,7 @@ Core ideas:
 | `npm run app:dev` | Tauri window with HMR |
 | `npm run app:build` | release `.app` + `.dmg` in `src-tauri/target/release/bundle/{macos,dmg}/` |
 | `npm run release [-- patch\|minor\|major\|x.y.z "notes"]` | ship an update to her (see "Releases & auto-update") |
+| GitHub → Actions → **Release** → Run workflow | the same release, built on GitHub's Mac (no Max's Mac needed) |
 | `npx tsc -b` / `npx oxlint` | typecheck / lint |
 
 ## Code map
@@ -117,6 +118,11 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - `npm run release` (scripts/release.mjs): needs clean tree on `main` + `gh` login + key. Bumps version in
   tauri.conf.json/package.json/Cargo.toml, builds, signs the updater tarball, commits "Release vX", tags, pushes, and
   creates a GitHub release with `Timetable.app.tar.gz` (+ `.sig`), `Timetable.dmg`, `latest.json`.
+- **Remote releases** (2026-09-28): `.github/workflows/release.yml` runs the same `scripts/release.mjs` on a `macos-latest`
+  runner (workflow_dispatch; inputs `bump`, `notes`). Needs repo secret `TAURI_SIGNING_PRIVATE_KEY` = contents of
+  `~/.tauri/timetable.key` (Max adds it; agents never handle the key). The "Release vX" commit + tag are pushed to `main` by
+  github-actions[bot], so pull before working locally. Agents can trigger it via the GitHub API from any session.
+  Trade-off accepted by Max: the key also lives in GitHub's secret store, so his GitHub login (with 2FA) guards updates.
 - Fresh install link (always the newest): https://github.com/maxsalmon1999-cloud/timetable/releases/latest/download/Timetable.dmg
 - **Updater signing key: `~/.tauri/timetable.key` (no password) on Max's Mac, NEVER in the repo.** Public key is in
   tauri.conf.json. If the private key is lost, her installed app can't accept updates; she'd need one manual reinstall of a
@@ -256,3 +262,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-09-28**: Hover card: resting the mouse on any block or calendar event shows its full title, day, times, length and
   clashes; calendar events also show location, notes and calendar (EventKit now reads location + notes). Replaces the
   native tooltips.
+- **2026-09-28**: Releases can run remotely: GitHub Actions workflow "Release" builds, signs and publishes on GitHub's Mac.
+  `release.mjs` now also takes the key from `TAURI_SIGNING_PRIVATE_KEY` and finds rustup on PATH.
