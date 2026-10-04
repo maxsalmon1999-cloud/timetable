@@ -329,3 +329,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   `src/lib/firebaseConfig.ts` has a config. iPad groundwork: `tauri ios init` (gen/apple), Rust compiles for iOS sim (calendar
   colour via CGColor, updater/process desktop-only, capabilities split). NOT done yet: iPad Info.plist (landscape, calendar
   strings, Files sharing), touch drag/hover, hide Mac-only UI on iPad, simulator run, TestFlight workflow.
+- **2026-10-04**: **Released v0.5.0**, the first Developer ID signed + notarised release (tick rewards; sync code included but
+  off). Verified the download: Gatekeeper "accepted, source=Notarized Developer ID", ticket stapled, universal, calendar
+  entitlement, latest.json has both platforms. Notarisation took about 50 minutes. Lesson: never push to main while the
+  Release workflow runs; its final `git push` fails and nothing is published (happened once, re-ran).
