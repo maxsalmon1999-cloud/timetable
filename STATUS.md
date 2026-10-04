@@ -172,6 +172,18 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   copied, so moving/renaming/deleting a block updates the list. Tickable, not editable/removable. Ticks live in
   `AppData.todoTicks?: Record<mondayISO, id[]>` (block id or calendar per-day id; stale ids are harmless). Calendar
   events only appear in synced weeks. Counts/badges include unticked pulled-in items; "Clear ticked" only clears her own.
+- **Tick rewards** (2026-10-04, from `design_handoff_timetable_redesign/handoff/HANDOFF.md` + `Todo Rewards.dc.html`,
+  effect "2c Glint"): 28px checkbox that lifts, sinks while held (leave before release cancels), springs on tick with a
+  mint fill, self-drawing check, ring, row flash, drawn strike-through, a light sweep + 2 stars, and a rising note per
+  tick (pentatonic ladder). Progress meter (one cell per item, "3 of 7"); finishing a day holds the full meter 240ms,
+  then a lemon "Sunday’s done." banner stamps in with confetti + arpeggio. Zero counts show a mint ✓ (tab + toolbar
+  badges), counts bump on change. Added rows drop in (lemon flash, blip); "Clear ticked" sweeps rows out one by one.
+  Unticking stays quiet. Timetable rows: whole row is the tick target; her own rows: the box.
+  Sound on/off: speaker button in the pad header (localStorage `timetable-todo-sound`). No intensity setting (Playful).
+  `prefers-reduced-motion`: keeps colour/fill/strike/sound, skips glint, stars, confetti, ring, spring, bumps.
+  Code: `lib/rewards.ts` (Web Audio + Web Animations one-shots; row effects are drawn inside the row so they move with
+  it), CSS transitions for state (`.todo-box.on`, `.strike`). Browser-verified (frames inspected by pausing animations);
+  sound not checked by ear.
 - Only in the normal toolbar (not while building a template).
 - Toolbar fit: "Week templates" label shortened to "Templates"; `.main` container ≤1140px hides the Templates + To-do
   labels, ≤980px hides all action labels. Checked no toolbar overflow for main widths 800–1240 with the worst-case title.
@@ -298,3 +310,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   keep theirs. Released in v0.4.0.
 - **2026-10-04**: To-do pad pulls in each day's timetable blocks and calendar events (with start times), tickable. Released in v0.4.0.
 - **2026-10-04**: **Released v0.4.0** (GitHub Actions): to-do pad (per week, pulls in blocks + calendar events), month-only title.
+- **2026-10-04**: To-do tick rewards (handoff in `design_handoff_timetable_redesign/handoff/`): springy checkbox, glint +
+  stars, note ladder, progress meter, day-done banner + confetti, ✓ zero badges, add/clear motion, sound toggle. Not yet released.

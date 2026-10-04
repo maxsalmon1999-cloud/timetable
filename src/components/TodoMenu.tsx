@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
-import { BroomIcon, CalendarBlankIcon, CheckIcon, ListChecksIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
+import { useEffect, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent } from 'react'
+import { BroomIcon, CalendarBlankIcon, CheckIcon, ListChecksIcon, PlusIcon, SpeakerSimpleHighIcon, SpeakerSimpleSlashIcon, XIcon } from '@phosphor-icons/react'
 import type { IconWeight, Todo } from '../lib/types'
 import { uid } from '../lib/constants'
 import { fmtTime, fromISO, toISO, weekLabel } from '../lib/dates'
 import { discIcon } from '../lib/icons'
+import { bump, confetti, glint, reducedMotion, setSoundOn, soundOn, sounds, tickPop } from '../lib/rewards'
 import { ActivityIcon } from './ActivityIcon'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -40,9 +41,30 @@ interface Props {
   onTick: (id: string) => void
 }
 
-/** unticked items (scheduled + her own) on one day */
-const leftOn = (p: Pick<Props, 'todos' | 'scheduled' | 'ticked'>, d: number) =>
-  (p.scheduled[d] ?? []).filter((s) => !p.ticked.has(s.id)).length + (p.todos[d] ?? []).filter((t) => !t.done).length
+/** items (scheduled + her own) on one day, and how many are ticked */
+const countOn = (p: Pick<Props, 'todos' | 'scheduled' | 'ticked'>, d: number) => {
+  const plan = p.scheduled[d] ?? []
+  const own = p.todos[d] ?? []
+  const total = plan.length + own.length
+  const done = plan.filter((s) => p.ticked.has(s.id)).length + own.filter((t) => t.done).length
+  return { total, done, left: total - done }
+}
+
+/** A count badge: the number left, a mint ✓ once there are items and none are left, nothing when empty. Bumps on change. */
+function Count({ left, total, className, title }: { left: number; total: number; className: string; title?: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const prev = useRef(left)
+  useEffect(() => {
+    if (prev.current !== left) bump(ref.current)
+    prev.current = left
+  }, [left])
+  if (!total) return null
+  return (
+    <span ref={ref} className={className + (left ? '' : ' zero')} title={title}>
+      {left || <CheckIcon size={11} weight="bold" />}
+    </span>
+  )
+}
 
 /**
  * Toolbar button + the to-do pad that pops out under it, for the week on screen. Closes on ×, Escape or a click
@@ -51,7 +73,9 @@ const leftOn = (p: Pick<Props, 'todos' | 'scheduled' | 'ticked'>, d: number) =>
 export function TodoMenu(props: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const weekLeft = props.dates.reduce((n, _, d) => n + leftOn(props, d), 0)
+  const week = props.dates.map((_, d) => countOn(props, d))
+  const weekLeft = week.reduce((n, c) => n + c.left, 0)
+  const weekTotal = week.reduce((n, c) => n + c.total, 0)
 
   useEffect(() => {
     if (!open) return
@@ -74,11 +98,23 @@ export function TodoMenu(props: Props) {
       <button className={'btn mint' + (open ? ' active' : '')} aria-expanded={open} title="To-do list" onClick={() => setOpen(!open)}>
         <ListChecksIcon size={22} weight="bold" />
         <span className="btn-label">To-do</span>
-        {weekLeft > 0 && <span className="badge mono" title={`${weekLeft} left this week`}>{weekLeft}</span>}
+        <Count left={weekLeft} total={weekTotal} className="badge mono" title={weekLeft ? `${weekLeft} left this week` : 'All done this week'} />
       </button>
       {/* keyed by week so it opens on the right day of each week */}
       {open && <TodoPad key={props.dates[0]} {...props} onClose={() => setOpen(false)} />}
     </div>
+  )
+}
+
+/** The checkbox's look: mint fill grows in, the tick draws itself (CSS transitions on `.on`) */
+function Box({ on }: { on: boolean }) {
+  return (
+    <span className={'todo-box' + (on ? ' on' : '')} aria-hidden>
+      <span className="todo-fill" />
+      <svg viewBox="0 0 24 24">
+        <polyline points="5,12.5 10,17.5 19.5,7" />
+      </svg>
+    </span>
   )
 }
 
@@ -89,18 +125,111 @@ function TodoPad(props: Props & { onClose: () => void }) {
   const [day, setDay] = useState(Math.max(0, today))
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
+  /** the checkbox being held down (pointer), so it sinks; leaving it before release cancels */
+  const [pressed, setPressed] = useState<string | null>(null)
+  /**
+   * The day just finished by a tick: 'hold' keeps the full meter for a beat, then 'stamp' swaps in the banner with its
+   * stamp-in. Just viewing a finished day shows the banner still.
+   */
+  const [finish, setFinish] = useState<{ day: number; phase: 'hold' | 'stamp' } | null>(null)
+  /** her newest to-do, which drops in */
+  const [fresh, setFresh] = useState<string | null>(null)
+  const [clearing, setClearing] = useState(false)
+  const [sound, setSound] = useState(soundOn)
+  const padRef = useRef<HTMLDivElement>(null)
+  const fxRef = useRef<HTMLDivElement>(null)
+  const meterRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+
   const list = todos[day] ?? []
   const plan = scheduled[day] ?? []
-  const left = (d: number) => leftOn(props, d)
-  const total = list.length + plan.length
+  const { total, done } = countOn(props, day)
+  const complete = total > 0 && done === total
+  const holding = finish?.day === day && finish.phase === 'hold'
   const doneOwn = list.filter((t) => t.done).length
   const change = (fn: (list: Todo[]) => Todo[]) => onChange(day, fn)
+
+  /** the reward path, only when something becomes ticked (unticking stays quiet) */
+  const reward = (row: HTMLElement) => {
+    const box = row.querySelector<HTMLElement>('.todo-box')
+    const doneNow = done + 1
+    sounds.tick(doneNow)
+    if (box) tickPop(box, row)
+    glint(row)
+    // after React has drawn the newly filled cell
+    requestAnimationFrame(() => bump(meterRef.current?.children[doneNow - 1], 'scale(1.15,1.6)', 360))
+    if (doneNow === total) {
+      setFinish({ day, phase: 'hold' })
+      setTimeout(() => {
+        setFinish({ day, phase: 'stamp' })
+        sounds.dayDone()
+        if (fxRef.current) confetti(fxRef.current)
+        // once the banner is on screen
+        requestAnimationFrame(() => {
+          const banner = padRef.current?.querySelector<HTMLElement>('.todo-banner')
+          if (banner) glint(banner, 4)
+        })
+      }, 240)
+    }
+  }
+
+  const rowOf = (e: RMouseEvent) => (e.currentTarget as HTMLElement).closest<HTMLElement>('.todo-item')!
+
+  const tickPlanned = (e: RMouseEvent, s: Scheduled) => {
+    if (!ticked.has(s.id)) reward(rowOf(e))
+    onTick(s.id)
+  }
+
+  const tickOwn = (e: RMouseEvent, t: Todo) => {
+    if (!t.done) reward(rowOf(e))
+    change((l) => l.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)))
+  }
+
+  const press = (id: string) => ({
+    onPointerDown: (e: RPointerEvent) => {
+      if (e.button !== 0) return
+      setPressed(id)
+      sounds.press()
+    },
+    onPointerUp: () => setPressed(null),
+    onPointerLeave: () => setPressed(null),
+    onPointerCancel: () => setPressed(null),
+  })
 
   const add = () => {
     const text = draft.trim()
     if (!text) return
-    change((l) => [...l, { id: uid(), text, done: false }])
+    const id = uid()
+    change((l) => [...l, { id, text, done: false }])
+    setFresh(id)
     setDraft('')
+    sounds.add()
+    requestAnimationFrame(() => {
+      const cell = meterRef.current?.lastElementChild
+      if (cell && !reducedMotion()) cell.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 300, easing: 'cubic-bezier(.3,1.3,.5,1)' })
+    })
+  }
+
+  /** ticked rows sweep out one by one, then leave the list */
+  const clearTicked = () => {
+    if (clearing) return
+    const rows = [...(listRef.current?.querySelectorAll<HTMLElement>('.todo-item.own.done') ?? [])]
+    const remove = () => change((l) => l.filter((t) => !t.done))
+    rows.forEach((_, i) => sounds.clear(i))
+    if (reducedMotion() || !rows.length) return remove()
+    setClearing(true)
+    rows.forEach((r, i) =>
+      r.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateX(60px) rotate(2deg)', opacity: 0 }], {
+        duration: 320,
+        delay: i * 70,
+        easing: 'cubic-bezier(.5,0,.75,0)',
+        fill: 'forwards',
+      }),
+    )
+    setTimeout(() => {
+      remove()
+      setClearing(false)
+    }, 320 + (rows.length - 1) * 70)
   }
 
   const finishEdit = () => {
@@ -113,79 +242,121 @@ function TodoPad(props: Props & { onClose: () => void }) {
   }
 
   return (
-    <div className="todo panel" role="dialog" aria-label="To-do list">
+    <div className="todo panel" role="dialog" aria-label="To-do list" ref={padRef}>
       <div className="panel-head mint">
         <div className="panel-title">
           <h1 className="todo-title">To-do</h1>
           <span className="mono small">{weekLabel(fromISO(dates[0]))}</span>
         </div>
-        <button className="btn square" title="Close to-do list" onClick={onClose}>
-          <XIcon size={22} weight="bold" />
-        </button>
+        <div className="todo-head-tools">
+          <button
+            className="btn square"
+            title={sound ? 'Turn tick sounds off' : 'Turn tick sounds on'}
+            aria-pressed={sound}
+            onClick={() => {
+              setSoundOn(!sound)
+              setSound(!sound)
+            }}
+          >
+            {sound ? <SpeakerSimpleHighIcon size={22} weight="bold" /> : <SpeakerSimpleSlashIcon size={22} weight="bold" />}
+          </button>
+          <button className="btn square" title="Close to-do list" onClick={onClose}>
+            <XIcon size={22} weight="bold" />
+          </button>
+        </div>
       </div>
 
       <div className="todo-tabs" role="tablist">
-        {DAYS.map((name, i) => (
-          <button
-            key={name}
-            role="tab"
-            aria-selected={i === day}
-            className={'todo-tab' + (i === day ? ' on' : '') + (i === today ? ' today' : '')}
-            title={name + (left(i) ? ` · ${left(i)} to do` : '')}
-            onClick={() => {
-              setDay(i)
-              setEditing(null)
-            }}
-          >
-            <span className="todo-tab-dow">{name.slice(0, 2)}</span>
-            <span className="todo-tab-date">{fromISO(dates[i]).getDate()}</span>
-            {left(i) > 0 && <span className="todo-count mono">{left(i)}</span>}
-          </button>
-        ))}
+        {DAYS.map((name, i) => {
+          const c = countOn(props, i)
+          return (
+            <button
+              key={name}
+              role="tab"
+              aria-selected={i === day}
+              className={'todo-tab' + (i === day ? ' on' : '') + (i === today ? ' today' : '')}
+              title={name + (c.total ? (c.left ? ` · ${c.left} to do` : ' · all done') : '')}
+              onClick={() => {
+                setDay(i)
+                setEditing(null)
+                setFresh(null)
+                setFinish(null) // coming back to a finished day shows the banner still
+              }}
+            >
+              <span className="todo-tab-dow">{name.slice(0, 2)}</span>
+              <span className="todo-tab-date">{fromISO(dates[i]).getDate()}</span>
+              <Count left={c.left} total={c.total} className="todo-count mono" />
+            </button>
+          )
+        })}
       </div>
 
       <div className="todo-day">
         <h2>
           {DAYS[day]} <span className="todo-day-date">{dayMonth(dates[day])}</span>
         </h2>
-        <span className="mono small">{total ? (left(day) ? `${left(day)} left` : 'All done!') : ''}</span>
+        {total > 0 && (!complete || holding) && <span className="mono small">{`${done} of ${total}`}</span>}
       </div>
 
-      <ul className="todo-list">
+      {complete && !holding ? (
+        <div className={'todo-banner' + (finish?.day === day ? ' stamp' : '')}>
+          <span className="todo-banner-check">
+            <CheckIcon size={18} weight="bold" />
+          </span>
+          <div>
+            <b>{DAYS[day]}’s done.</b>
+            <span className="mono small">
+              {total} of {total} ticked
+            </span>
+          </div>
+        </div>
+      ) : (
+        total > 0 && (
+          <div className="todo-meter" ref={meterRef} aria-hidden>
+            {Array.from({ length: total }, (_, i) => (
+              <span key={i} className={i < done ? 'on' : ''} />
+            ))}
+          </div>
+        )
+      )}
+
+      <ul className="todo-list" ref={listRef}>
         {plan.map((s) => {
-          const done = ticked.has(s.id)
+          const on = ticked.has(s.id)
           return (
-            <li key={s.id} className={'todo-item planned' + (done ? ' done' : '')}>
-              <button className="todo-check" role="checkbox" aria-checked={done} title={done ? 'Untick' : 'Tick off'} onClick={() => onTick(s.id)}>
-                {done && <CheckIcon size={16} weight="bold" />}
-              </button>
-              <span className="todo-time mono">{fmtTime(s.start)}</span>
-              <span
-                className={'todo-chip' + (s.kind === 'event' ? ' event' : '')}
-                style={{ ['--c' as string]: s.color }}
+            <li key={s.id} className={'todo-item planned' + (on ? ' done' : '') + (pressed === s.id ? ' pressed' : '')}>
+              <button
+                className="todo-rowbtn"
+                role="checkbox"
+                aria-checked={on}
                 title={s.kind === 'event' ? `From your calendar${s.calendar ? ` (${s.calendar})` : ''}` : 'From your timetable'}
+                onClick={(e) => tickPlanned(e, s)}
+                {...press(s.id)}
               >
-                {s.kind === 'event' ? (
-                  <CalendarBlankIcon size={13} weight="bold" />
-                ) : (
-                  <ActivityIcon name={discIcon(s.icon, s.title)} weight={s.iconWeight} size={13} />
-                )}
-              </span>
-              <span className="todo-text plain">{s.title || 'Untitled'}</span>
+                <Box on={on} />
+                <span className="todo-time mono">{fmtTime(s.start)}</span>
+                <span className={'todo-chip' + (s.kind === 'event' ? ' event' : '')} style={{ ['--c' as string]: s.color }}>
+                  {s.kind === 'event' ? (
+                    <CalendarBlankIcon size={13} weight="bold" />
+                  ) : (
+                    <ActivityIcon name={discIcon(s.icon, s.title)} weight={s.iconWeight} size={13} />
+                  )}
+                </span>
+                <span className="todo-text">
+                  <span className="strike">{s.title || 'Untitled'}</span>
+                </span>
+              </button>
             </li>
           )
         })}
         {plan.length > 0 && list.length > 0 && <li className="todo-divider" aria-hidden />}
         {list.map((t) => (
-          <li key={t.id} className={'todo-item' + (t.done ? ' done' : '')}>
-            <button
-              className="todo-check"
-              role="checkbox"
-              aria-checked={t.done}
-              title={t.done ? 'Untick' : 'Tick off'}
-              onClick={() => change((l) => l.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)))}
-            >
-              {t.done && <CheckIcon size={16} weight="bold" />}
+          <li
+            key={t.id}
+            className={'todo-item own' + (t.done ? ' done' : '') + (pressed === t.id ? ' pressed' : '') + (t.id === fresh ? ' fresh' : '')}
+          >
+            <button className="todo-tick" role="checkbox" aria-checked={t.done} title={t.done ? 'Untick' : 'Tick off'} onClick={(e) => tickOwn(e, t)} {...press(t.id)}>
+              <Box on={t.done} />
             </button>
             {editing?.id === t.id ? (
               <input
@@ -200,8 +371,8 @@ function TodoPad(props: Props & { onClose: () => void }) {
                 }}
               />
             ) : (
-              <span className="todo-text" title="Click to change" onClick={() => setEditing({ id: t.id, text: t.text })}>
-                {t.text}
+              <span className="todo-text editable" title="Click to change" onClick={() => setEditing({ id: t.id, text: t.text })}>
+                <span className="strike">{t.text}</span>
               </span>
             )}
             <button className="todo-remove" title="Remove" onClick={() => change((l) => l.filter((x) => x.id !== t.id))}>
@@ -226,12 +397,15 @@ function TodoPad(props: Props & { onClose: () => void }) {
           </button>
         </form>
         {doneOwn > 0 && (
-          <button className="btn small" title="Removes the to-dos you ticked (timetable items stay)" onClick={() => change((l) => l.filter((t) => !t.done))}>
+          <button className="btn small" title="Removes the to-dos you ticked (timetable items stay)" disabled={clearing} onClick={clearTicked}>
             <BroomIcon size={18} weight="bold" />
             Clear {doneOwn} ticked
           </button>
         )}
       </div>
+
+      {/* one-shot effects (rings, glints, stars, confetti) are drawn here */}
+      <div className="todo-fx" ref={fxRef} aria-hidden />
     </div>
   )
 }
