@@ -59,7 +59,7 @@ h1, h2, p { margin: 0; }
 /* ---------- layout ---------- */
 .app { height: 100%; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
 .app.dragging, .app.dragging * { cursor: grabbing !important; }
-.shell { flex: 1; min-height: 0; display: flex; gap: 16px; padding: 16px; }
+.shell { position: relative; flex: 1; min-height: 0; display: flex; gap: 16px; padding: 16px; }
 /* the native traffic lights sit here in the app (tauri.conf trafficLightPosition) */
 .traffic-light-space { width: 52px; height: 14px; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
@@ -548,3 +548,52 @@ input:focus, select:focus { box-shadow: 0 0 0 4px var(--lilac); }
 }
 input.template-name { height: 44px; width: 300px; min-width: 140px; flex-shrink: 1; }
 .grid-card.blank .day-head .dow { font-size: 16px; font-weight: 800; }
+
+/* ---------- to-do pad (right of the grid) ---------- */
+.btn.mint.active { background: var(--paper); }
+.badge {
+  min-width: 22px; height: 22px; padding: 0 6px; display: inline-grid; place-items: center;
+  background: var(--paper); border: 2px solid var(--ink); border-radius: var(--r-pill); font-size: 12px;
+}
+.todo { width: 290px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+.panel-head.mint { background: var(--mint); }
+.todo-title { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+.todo-tabs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; padding: 14px 12px 4px; }
+.todo-tab {
+  position: relative; height: 40px; padding: 0;
+  border: 2px solid var(--ink); border-radius: var(--r-control); background: var(--paper);
+  font: 800 14px var(--font); color: var(--ink); cursor: pointer;
+}
+.todo-tab.today { background: var(--lemon); }
+.todo-tab.on { background: var(--grape); box-shadow: var(--sh-press); transform: translate(1px, 1px); }
+.todo-tab:not(.on):hover { box-shadow: var(--sh-press); }
+.todo-count {
+  position: absolute; top: -8px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px;
+  display: grid; place-items: center; background: var(--coral); border: 2px solid var(--ink); border-radius: var(--r-pill);
+  font-size: 10.5px; line-height: 1;
+}
+.todo-day { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 12px 16px 6px; }
+.todo-day h2 { font-size: 22px; font-weight: 800; }
+.todo-list { list-style: none; margin: 0; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; flex: 1; }
+.todo-list .empty { padding: 6px 4px; opacity: 0.6; }
+.todo-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 4px; border-radius: var(--r-control); }
+.todo-item:hover { background: rgba(33, 28, 51, 0.05); }
+.todo-check {
+  width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center; padding: 0;
+  background: var(--white); border: 2px solid var(--ink); border-radius: 8px; color: var(--ink); cursor: pointer;
+}
+.todo-item.done .todo-check { background: var(--mint); }
+.todo-text { flex: 1; min-width: 0; padding-top: 3px; font-size: 15px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; cursor: text; user-select: text; -webkit-user-select: text; }
+.todo-item.done .todo-text { text-decoration: line-through; text-decoration-thickness: 2px; opacity: 0.5; }
+input.todo-edit { flex: 1; height: 32px; padding: 0 8px; font-size: 15px; border-width: 2px; border-radius: 8px; }
+.todo-remove { width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center; padding: 0; border: none; background: none; color: var(--ink); cursor: pointer; opacity: 0; }
+.todo-item:hover .todo-remove, .todo-remove:focus-visible { opacity: 0.7; }
+.todo-remove:hover { opacity: 1; }
+.todo-foot { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-top: var(--bw) solid var(--ink); }
+.todo-add { display: flex; gap: 8px; }
+.todo-add input { height: 44px; font-size: 15px; }
+.todo-foot > .btn { align-self: flex-start; }
+/* narrow windows: the pad floats over the right of the grid (below the toolbar) instead of squeezing the week */
+@media (max-width: 1360px) {
+  .todo { position: absolute; z-index: 15; top: 90px; right: 16px; bottom: 16px; box-shadow: 8px 8px 0 var(--ink); }
+}

@@ -59,6 +59,7 @@ src/
                           clash rings, hitTest (pointer → {date, minute}) exposed via ref
   components/HoverCard.tsx      details card beside a hovered block / calendar event / all-day event (portal, fixed,
                                 pointer-events none). Hover state + lookup live in WeekGrid (useHover, HoverDetails)
+  components/TodoPanel.tsx      to-do pad: Mon–Sun tabs, a checklist each (AppData.todos), opened by the toolbar To-do button
   components/ActivityIcon.tsx   renders an icon by name (or first-letter fallback in discs)
   components/IconLibrary.tsx    search + category pills + icon grid (activity editor, block editor "More icons…")
   components/Sidebar.tsx  activity bank + usage hints + save pill + version
@@ -154,6 +155,16 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - Goes the moment the mouse leaves; sliding straight to another item swaps it instantly (300 ms grace). Never shows while
   a button is held (drags), hides on any pointer-down in the grid, key press, window blur or resize.
 - Content is looked up live by id (`HoverDetails`), so an undo that removes the item removes the card.
+
+### To-do pad (2026-10-04)
+- Toolbar **To-do** button (mint, coral badge = items left for today's weekday) toggles a 290px panel right of the grid.
+  Open/closed is remembered in localStorage (`timetable-todo-open`, per-Mac convenience; try/catch).
+- `AppData.todos?: Todo[][]` (7 lists, 0 = Monday, `{id, text, done}`), **not tied to dates**: same lists every week.
+  Optional field, no version bump (migrate spreads unknown fields through). Every add/tick/edit/remove/clear = one undo step.
+- Tabs Mo–Su (today lemon, selected grape, coral count of unticked). Click text to edit inline (Enter/blur saves,
+  Escape cancels, emptying it removes). "Clear N ticked" removes ticked items for that day.
+- Windows ≤1360px wide: the panel floats over the right of the grid below the toolbar (otherwise the week gets squeezed).
+- Browser-verified at 1440×900, 1370×800, 1100×680. Not yet released.
 
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
@@ -271,3 +282,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   Expect it to recur on updates until Developer ID signing + notarisation (Max is setting up an Apple Developer account).
 - **2026-10-04**: Week title shows only the month ("September", "September – October"); the day header already has the dates.
   `monthLabel` in dates.ts; `weekLabel` (full dates) is still used in the clear-week confirm. Not yet released.
+- **2026-10-04**: To-do pad: toolbar To-do button opens a Mon–Sun tabbed checklist beside the grid (not tied to dates). Not yet released.
