@@ -67,4 +67,9 @@ export interface AppData {
    * Past weeks keep their lists. A week's key is dropped when all its lists are empty.
    */
   todos?: Record<string, Todo[][]>
+  /**
+   * Ticks on the timetable blocks / calendar events that the to-do pad pulls in: Monday (YYYY-MM-DD) → ids
+   * (block id, or calendar `eventIdentifier@startMs|YYYY-MM-DD`). The items themselves are never copied.
+   */
+  todoTicks?: Record<string, string[]>
 }

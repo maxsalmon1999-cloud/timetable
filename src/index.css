@@ -603,3 +603,12 @@ input.todo-edit { flex: 1; height: 32px; padding: 0 8px; font-size: 15px; border
 .todo-add { display: flex; gap: 8px; }
 .todo-add input { height: 44px; font-size: 15px; }
 .todo-foot > .btn { align-self: flex-start; }
+.todo-item.planned { align-items: center; }
+.todo-time { flex-shrink: 0; min-width: 40px; font-size: 12.5px; }
+.todo-chip {
+  width: 22px; height: 22px; flex-shrink: 0; display: grid; place-items: center;
+  background: var(--c); border: 2px solid var(--ink); border-radius: 7px;
+}
+.todo-chip.event { background: repeating-linear-gradient(-45deg, var(--paper) 0 4px, var(--c) 4px 8px); border-style: dashed; }
+.todo-text.plain { padding-top: 0; cursor: default; }
+.todo-divider { height: 0; margin: 6px 4px; border-top: 2px dashed var(--line-dash); }

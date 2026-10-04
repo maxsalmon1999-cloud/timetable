@@ -1,13 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
-import { BroomIcon, CheckIcon, ListChecksIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
-import type { Todo } from '../lib/types'
+import { BroomIcon, CalendarBlankIcon, CheckIcon, ListChecksIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
+import type { IconWeight, Todo } from '../lib/types'
 import { uid } from '../lib/constants'
-import { fromISO, toISO, weekLabel } from '../lib/dates'
+import { fmtTime, fromISO, toISO, weekLabel } from '../lib/dates'
+import { discIcon } from '../lib/icons'
+import { ActivityIcon } from './ActivityIcon'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 /** the weekday index of today if it's in this week, else -1 */
 const todayIn = (dates: string[]) => dates.indexOf(toISO(new Date()))
 const dayMonth = (iso: string) => fromISO(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
+
+/** A timetable block or timed calendar event, pulled into that day's list (read live, never copied) */
+export interface Scheduled {
+  /** block id, or the calendar event's per-day id; also the key in the week's ticks */
+  id: string
+  kind: 'block' | 'event'
+  title: string
+  /** minutes from midnight */
+  start: number
+  color: string
+  icon?: string
+  iconWeight?: IconWeight
+  /** calendar name, for events */
+  calendar?: string
+}
 
 interface Props {
   /** the 7 dates (YYYY-MM-DD) of the week on screen */
@@ -16,16 +33,25 @@ interface Props {
   todos: Todo[][]
   /** change one weekday's list (one undo step) */
   onChange: (day: number, fn: (list: Todo[]) => Todo[]) => void
+  /** each day's blocks + timed calendar events, sorted by start */
+  scheduled: Scheduled[][]
+  /** ids of scheduled items ticked off this week */
+  ticked: ReadonlySet<string>
+  onTick: (id: string) => void
 }
+
+/** unticked items (scheduled + her own) on one day */
+const leftOn = (p: Pick<Props, 'todos' | 'scheduled' | 'ticked'>, d: number) =>
+  (p.scheduled[d] ?? []).filter((s) => !p.ticked.has(s.id)).length + (p.todos[d] ?? []).filter((t) => !t.done).length
 
 /**
  * Toolbar button + the to-do pad that pops out under it, for the week on screen. Closes on ×, Escape or a click
  * outside; stays open while she moves between weeks (Today / ‹ ›) so she can look through them.
  */
-export function TodoMenu({ dates, todos, onChange }: Props) {
+export function TodoMenu(props: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const weekLeft = todos.flat().filter((t) => !t.done).length
+  const weekLeft = props.dates.reduce((n, _, d) => n + leftOn(props, d), 0)
 
   useEffect(() => {
     if (!open) return
@@ -51,20 +77,23 @@ export function TodoMenu({ dates, todos, onChange }: Props) {
         {weekLeft > 0 && <span className="badge mono" title={`${weekLeft} left this week`}>{weekLeft}</span>}
       </button>
       {/* keyed by week so it opens on the right day of each week */}
-      {open && <TodoPad key={dates[0]} dates={dates} todos={todos} onChange={onChange} onClose={() => setOpen(false)} />}
+      {open && <TodoPad key={props.dates[0]} {...props} onClose={() => setOpen(false)} />}
     </div>
   )
 }
 
 /** One week's to-do pad: a tab per day. Opens on today in the current week, Monday in any other. */
-function TodoPad({ dates, todos, onChange, onClose }: Props & { onClose: () => void }) {
+function TodoPad(props: Props & { onClose: () => void }) {
+  const { dates, todos, onChange, scheduled, ticked, onTick, onClose } = props
   const today = todayIn(dates)
   const [day, setDay] = useState(Math.max(0, today))
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const list = todos[day] ?? []
-  const left = (d: number) => (todos[d] ?? []).filter((t) => !t.done).length
-  const ticked = list.length - left(day)
+  const plan = scheduled[day] ?? []
+  const left = (d: number) => leftOn(props, d)
+  const total = list.length + plan.length
+  const doneOwn = list.filter((t) => t.done).length
   const change = (fn: (list: Todo[]) => Todo[]) => onChange(day, fn)
 
   const add = () => {
@@ -119,10 +148,34 @@ function TodoPad({ dates, todos, onChange, onClose }: Props & { onClose: () => v
         <h2>
           {DAYS[day]} <span className="todo-day-date">{dayMonth(dates[day])}</span>
         </h2>
-        <span className="mono small">{list.length ? (left(day) ? `${left(day)} left` : 'All done!') : ''}</span>
+        <span className="mono small">{total ? (left(day) ? `${left(day)} left` : 'All done!') : ''}</span>
       </div>
 
       <ul className="todo-list">
+        {plan.map((s) => {
+          const done = ticked.has(s.id)
+          return (
+            <li key={s.id} className={'todo-item planned' + (done ? ' done' : '')}>
+              <button className="todo-check" role="checkbox" aria-checked={done} title={done ? 'Untick' : 'Tick off'} onClick={() => onTick(s.id)}>
+                {done && <CheckIcon size={16} weight="bold" />}
+              </button>
+              <span className="todo-time mono">{fmtTime(s.start)}</span>
+              <span
+                className={'todo-chip' + (s.kind === 'event' ? ' event' : '')}
+                style={{ ['--c' as string]: s.color }}
+                title={s.kind === 'event' ? `From your calendar${s.calendar ? ` (${s.calendar})` : ''}` : 'From your timetable'}
+              >
+                {s.kind === 'event' ? (
+                  <CalendarBlankIcon size={13} weight="bold" />
+                ) : (
+                  <ActivityIcon name={discIcon(s.icon, s.title)} weight={s.iconWeight} size={13} />
+                )}
+              </span>
+              <span className="todo-text plain">{s.title || 'Untitled'}</span>
+            </li>
+          )
+        })}
+        {plan.length > 0 && list.length > 0 && <li className="todo-divider" aria-hidden />}
         {list.map((t) => (
           <li key={t.id} className={'todo-item' + (t.done ? ' done' : '')}>
             <button
@@ -156,7 +209,7 @@ function TodoPad({ dates, todos, onChange, onClose }: Props & { onClose: () => v
             </button>
           </li>
         ))}
-        {!list.length && <li className="empty">Nothing for {DAYS[day]} yet.</li>}
+        {!total && <li className="empty">Nothing for {DAYS[day]} yet.</li>}
       </ul>
 
       <div className="todo-foot">
@@ -172,10 +225,10 @@ function TodoPad({ dates, todos, onChange, onClose }: Props & { onClose: () => v
             <PlusIcon size={22} weight="bold" />
           </button>
         </form>
-        {ticked > 0 && (
-          <button className="btn small" onClick={() => change((l) => l.filter((t) => !t.done))}>
+        {doneOwn > 0 && (
+          <button className="btn small" title="Removes the to-dos you ticked (timetable items stay)" onClick={() => change((l) => l.filter((t) => !t.done))}>
             <BroomIcon size={18} weight="bold" />
-            Clear {ticked} ticked
+            Clear {doneOwn} ticked
           </button>
         )}
       </div>

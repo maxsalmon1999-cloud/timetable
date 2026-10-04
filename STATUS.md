@@ -166,10 +166,17 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - Header shows the week's dates. Tabs show weekday + date (today lemon, selected grape, coral count of unticked).
   Opens on today in the current week, Monday in other weeks (`TodoPad` keyed by week). Click text to edit inline
   (Enter/blur saves, Escape cancels, emptying it removes). "Clear N ticked" removes ticked items for that day.
+- **Pulled-in items**: each day lists that day's blocks + timed calendar events that *start* that day (no all-day, no
+  continuation of last night's event), sorted by start, above her own to-dos (dashed divider). Shown with start time +
+  a chip (block colour + icon; calendar events striped with CalendarBlank). Derived live in App (`scheduled`), never
+  copied, so moving/renaming/deleting a block updates the list. Tickable, not editable/removable. Ticks live in
+  `AppData.todoTicks?: Record<mondayISO, id[]>` (block id or calendar per-day id; stale ids are harmless). Calendar
+  events only appear in synced weeks. Counts/badges include unticked pulled-in items; "Clear ticked" only clears her own.
 - Only in the normal toolbar (not while building a template).
 - Toolbar fit: "Week templates" label shortened to "Templates"; `.main` container ≤1140px hides the Templates + To-do
   labels, ≤980px hides all action labels. Checked no toolbar overflow for main widths 800–1240 with the worst-case title.
-- Browser-verified at 1440×900 and 1100×680 (per-week lists, nav keeps it open, old-shape migration). Not yet released.
+- Browser-verified at 1440×900 and 1100×680 (per-week lists, nav keeps it open, old-shape migration, pulled-in blocks +
+  sample events, ticks saved per week). Not yet released.
 
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
@@ -289,3 +296,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   `monthLabel` in dates.ts; `weekLabel` (full dates) is still used in the clear-week confirm. Not yet released.
 - **2026-10-04**: To-do pad: toolbar To-do button pops out a Mon–Sun tabbed checklist for the week on screen; past weeks
   keep theirs. Not yet released.
+- **2026-10-04**: To-do pad pulls in each day's timetable blocks and calendar events (with start times), tickable. Not yet released.

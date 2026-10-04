@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps,
 import { useAppData } from './lib/store'
 import type { Activity, AppData, Block, Template, TemplateBlock, Todo } from './lib/types'
 import { MAX_END, MIN_START, SNAP, snap, uid } from './lib/constants'
-import { addDays, fmtTime, startOfWeek, monthLabel, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
+import { addDays, fmtTime, fromISO, startOfWeek, monthLabel, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
 import { WeekGrid, type HitTest, type Preview } from './components/WeekGrid'
 import { Sidebar } from './components/Sidebar'
 import { BlockEditor } from './components/BlockEditor'
@@ -17,7 +17,7 @@ import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon, Che
 import { useCalendarSync } from './lib/useCalendarSync'
 import { SyncButton } from './components/SyncButton'
 import { UpdateNotice } from './components/UpdateNotice'
-import { TodoMenu } from './components/TodoMenu'
+import { TodoMenu, type Scheduled } from './components/TodoMenu'
 import { useUpdater } from './lib/useUpdater'
 
 type DragKind =
@@ -105,6 +105,21 @@ export default function App() {
   const target = targets.week === weekKey ? targets : { ...DEFAULT_TARGETS, week: weekKey } // resets on week change
   const setTarget = (t: Partial<RangeTargets>) => setTargets({ ...target, ...t })
   const dayEvents = useMemo(() => dates.map((d) => eventsForDay(cal.events, d)), [dates, cal.events])
+  // what the to-do pad pulls in for each day: her blocks + calendar events that start that day (not all-day ones)
+  const scheduled = useMemo<Scheduled[][]>(
+    () =>
+      dates.map((date, i) =>
+        [
+          ...weekBlocks
+            .filter((b) => b.date === date)
+            .map((b): Scheduled => ({ id: b.id, kind: 'block', title: b.title, start: b.start, color: b.color, icon: b.icon, iconWeight: b.iconWeight })),
+          ...dayEvents[i].timed
+            .filter((e) => e.source.start >= fromISO(date).getTime()) // not the continuation of last night's event
+            .map((e): Scheduled => ({ id: e.id, kind: 'event', title: e.title, start: e.start, color: e.color, calendar: e.calendar })),
+        ].sort((a, b) => a.start - b.start),
+      ),
+    [dates, weekBlocks, dayEvents],
+  )
   const range = useMemo(
     () => visibleRange([...weekBlocks, ...dayEvents.flatMap((d) => d.timed)], target, fmtTime),
     [weekBlocks, dayEvents, target.top, target.bottom], // eslint-disable-line react-hooks/exhaustive-deps
@@ -130,6 +145,15 @@ export default function App() {
 
   // ---------- data operations ----------
   const updateBlocks = (fn: (bs: Block[]) => Block[]) => update((d) => withBlocks(d, fn))
+  /** tick / untick a pulled-in block or calendar event in the week on screen (one undo step) */
+  const toggleTick = (id: string) =>
+    update((d) => {
+      const now = d.todoTicks?.[weekKey] ?? []
+      const next = now.includes(id) ? now.filter((x) => x !== id) : [...now, id]
+      const { [weekKey]: _, ...others } = d.todoTicks ?? {} // eslint-disable-line @typescript-eslint/no-unused-vars
+      return { ...d, todoTicks: next.length ? { ...others, [weekKey]: next } : others }
+    })
+
   /** change one day's to-do list in the week on screen (one undo step) */
   const updateTodos = (day: number, fn: (list: Todo[]) => Todo[]) =>
     update((d) => {
@@ -440,7 +464,14 @@ export default function App() {
                 })
               }
             />
-            <TodoMenu dates={dates} todos={data.todos?.[weekKey] ?? []} onChange={updateTodos} />
+            <TodoMenu
+              dates={dates}
+              todos={data.todos?.[weekKey] ?? []}
+              onChange={updateTodos}
+              scheduled={scheduled}
+              ticked={new Set(data.todoTicks?.[weekKey] ?? [])}
+              onTick={toggleTick}
+            />
           </div>
         </header>
         )}
