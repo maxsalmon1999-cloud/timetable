@@ -9,7 +9,7 @@ activities, save it as a template, and stamp it onto upcoming weeks.
 - **Drag on empty space** to create a block of any length.
 - **Drag a block** to move it, or drag its bottom edge to resize. Hold ⌥ while dropping to copy.
 - **Click a block** to rename, recolour, change its times or delete it.
-- **Week templates ▾**: save the current week as a template, apply a template to the
+- **Templates ▾**: save the current week as a template, apply a template to the
   week you're viewing, copy last week, or clear the week.
 - **Sync with Calendar** (next to the week title) shows that week's Apple Calendar events. They keep
   updating by themselves; anything of yours that clashes with an event gets a red outline and ⚠.

@@ -40,7 +40,7 @@ export function TemplatesMenu(p: Props) {
     <div className="menu-wrap" ref={ref}>
       <button className={'btn lemon' + (open ? ' active' : '')} title="Week templates" onClick={() => setOpen(!open)}>
         <SquaresFourIcon size={22} weight="bold" />
-        <span className="btn-label">Week templates</span>
+        <span className="btn-label">Templates</span>
         <CaretDownIcon size={16} weight="bold" />
       </button>
       {open && (

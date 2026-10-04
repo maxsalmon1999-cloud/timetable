@@ -13,11 +13,11 @@ import { accessStatus, eventsForDay, openPrivacySettings, requestAccess } from '
 import { DEFAULT_TARGETS, visibleRange, type RangeTargets } from './lib/dayRange'
 import { discIcon, PALETTE } from './lib/icons'
 import { ActivityIcon } from './components/ActivityIcon'
-import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon, CheckIcon, ListChecksIcon, SquaresFourIcon } from '@phosphor-icons/react'
+import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon, CheckIcon, SquaresFourIcon } from '@phosphor-icons/react'
 import { useCalendarSync } from './lib/useCalendarSync'
 import { SyncButton } from './components/SyncButton'
 import { UpdateNotice } from './components/UpdateNotice'
-import { TodoPanel } from './components/TodoPanel'
+import { TodoMenu } from './components/TodoMenu'
 import { useUpdater } from './lib/useUpdater'
 
 type DragKind =
@@ -43,15 +43,6 @@ const look = (x: { title?: string; name?: string; color: string; icon?: string; 
 
 const NEW_BLOCK_COLOR = PALETTE.sky
 
-/** whether the to-do panel is open: a per-Mac convenience, so browser storage (may be unavailable) */
-const TODO_OPEN_KEY = 'timetable-todo-open'
-const readTodoOpen = () => {
-  try {
-    return localStorage.getItem(TODO_OPEN_KEY) === '1'
-  } catch {
-    return false
-  }
-}
 
 /** Apply a change to whichever blocks are on screen: the template draft if one is open, otherwise her weeks */
 const withBlocks = (d: AppData, fn: (bs: Block[]) => Block[]): AppData =>
@@ -88,15 +79,6 @@ export default function App() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [drag, setDrag] = useState<Drag | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
-  const [todoOpen, setTodoOpenState] = useState(readTodoOpen)
-  const setTodoOpen = (open: boolean) => {
-    setTodoOpenState(open)
-    try {
-      localStorage.setItem(TODO_OPEN_KEY, open ? '1' : '0')
-    } catch {
-      /* not remembered; fine */
-    }
-  }
   const [confirming, setConfirming] = useState<Confirming | null>(null)
   const [restoreNoticeSeen, setRestoreNoticeSeen] = useState(false)
   const [syncPromptDismissed, setSyncPromptDismissed] = useState<string | null>(null)
@@ -183,7 +165,7 @@ export default function App() {
     }))
     setConfirming({
       title: 'Template saved',
-      message: `“${name}” is ready. Use it on any week from Week templates.`,
+      message: `“${name}” is ready. Use it on any week from Templates.`,
       actions: [],
       cancelLabel: 'OK',
     })
@@ -351,7 +333,6 @@ export default function App() {
     )
   if (!data) return <div className="loading" data-tauri-drag-region />
 
-  const todayLeft = (data.todos?.[(new Date().getDay() + 6) % 7] ?? []).filter((t) => !t.done).length
   const isThisWeek = toISO(weekStart) === toISO(startOfWeek(new Date()))
   const showSyncPrompt =
     !inTemplate && isThisWeek && !synced && weekBlocks.length === 0 && syncPromptDismissed !== weekKey &&
@@ -457,7 +438,7 @@ export default function App() {
                 })
               }
             />
-            <TodoButton open={todoOpen} left={todayLeft} onClick={() => setTodoOpen(!todoOpen)} />
+            <TodoMenu todos={data.todos ?? []} onChange={updateTodos} />
           </div>
         </header>
         )}
@@ -482,7 +463,6 @@ export default function App() {
           }}
         />
       </main>
-      {todoOpen && <TodoPanel todos={data.todos ?? []} onChange={updateTodos} onClose={() => setTodoOpen(false)} />}
       </div>
 
       {/* floating chip while dragging an activity outside the grid */}
@@ -534,15 +514,5 @@ export default function App() {
       )}
       {confirming && <Confirm {...confirming} onClose={() => setConfirming(null)} />}
     </div>
-  )
-}
-
-function TodoButton({ open, left, onClick }: { open: boolean; left: number; onClick: () => void }) {
-  return (
-    <button className={'btn mint' + (open ? ' active' : '')} aria-pressed={open} title={open ? 'Hide to-do list' : 'Show to-do list'} onClick={onClick}>
-      <ListChecksIcon size={22} weight="bold" />
-      <span className="btn-label">To-do</span>
-      {left > 0 && !open && <span className="badge mono" title={`${left} left for today`}>{left}</span>}
-    </button>
   )
 }

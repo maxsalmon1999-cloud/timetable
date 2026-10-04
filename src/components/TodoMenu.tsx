@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BroomIcon, CheckIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
+import { useEffect, useRef, useState } from 'react'
+import { BroomIcon, CheckIcon, ListChecksIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
 import type { Todo } from '../lib/types'
 import { uid } from '../lib/constants'
 
@@ -10,11 +10,44 @@ interface Props {
   todos: Todo[][]
   /** change one weekday's list (one undo step) */
   onChange: (day: number, fn: (list: Todo[]) => Todo[]) => void
-  onClose: () => void
+}
+
+/** Toolbar button + the to-do pad that pops out under it. Closes on × , Escape or a click outside. */
+export function TodoMenu({ todos, onChange }: Props) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const todayLeft = (todos[todayIndex()] ?? []).filter((t) => !t.done).length
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement
+      if (!ref.current?.contains(t) && !t.closest('.modal-backdrop')) setOpen(false)
+    }
+    // Escape while editing a line only cancels that edit
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !(e.target as Element | null)?.closest?.('.todo-edit') && setOpen(false)
+    window.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div className="menu-wrap" ref={ref}>
+      <button className={'btn mint' + (open ? ' active' : '')} aria-expanded={open} title="To-do list" onClick={() => setOpen(!open)}>
+        <ListChecksIcon size={22} weight="bold" />
+        <span className="btn-label">To-do</span>
+        {todayLeft > 0 && <span className="badge mono" title={`${todayLeft} left for today`}>{todayLeft}</span>}
+      </button>
+      {open && <TodoPad todos={todos} onChange={onChange} onClose={() => setOpen(false)} />}
+    </div>
+  )
 }
 
 /** A to-do pad with a tab per weekday. Not tied to dates: the same lists show whichever week is on screen. */
-export function TodoPanel({ todos, onChange, onClose }: Props) {
+function TodoPad({ todos, onChange, onClose }: Props & { onClose: () => void }) {
   const [day, setDay] = useState(todayIndex)
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
@@ -41,9 +74,9 @@ export function TodoPanel({ todos, onChange, onClose }: Props) {
   }
 
   return (
-    <aside className="todo panel">
-      <div className="panel-head mint" data-tauri-drag-region>
-        <h1 className="todo-title" data-tauri-drag-region>To-do</h1>
+    <div className="todo panel" role="dialog" aria-label="To-do list">
+      <div className="panel-head mint">
+        <h1 className="todo-title">To-do</h1>
         <button className="btn square" title="Close to-do list" onClick={onClose}>
           <XIcon size={22} weight="bold" />
         </button>
@@ -130,6 +163,6 @@ export function TodoPanel({ todos, onChange, onClose }: Props) {
           </button>
         )}
       </div>
-    </aside>
+    </div>
   )
 }
