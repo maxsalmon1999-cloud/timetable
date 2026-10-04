@@ -436,7 +436,7 @@ h1, h2, p { margin: 0; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-input:not([type]), input[type='text'], input[type='number'], select {
+input:not([type]), input[type='text'], input[type='number'], input[type='email'], input[type='password'], select {
   height: 48px;
   width: 100%;
   padding: 0 14px;
@@ -683,3 +683,15 @@ input.todo-edit { flex: 1; height: 32px; padding: 0 8px; font-size: 15px; border
   .todo-banner.stamp, .todo-item.fresh { animation: none; }
   .todo-item.pressed .todo-box { transform: translate(1px, 1px); }
 }
+
+/* ---------- cloud sync (sidebar pill + sign-in window) ---------- */
+.save-pill.cloud { align-self: flex-start; background: var(--sky); cursor: pointer; }
+.save-pill.cloud.signed-out, .save-pill.cloud.starting, .save-pill.cloud.connecting, .save-pill.cloud.offline { background: var(--paper); }
+.save-pill.cloud.error { background: var(--coral); }
+.sync-form { display: flex; flex-direction: column; gap: 14px; }
+.sync-state { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.sync-state.error { color: var(--clash-ink); }
+.sync-message { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.sync-message.bad { color: var(--clash-ink); }
+.link.left { margin-right: auto; }
+.link:disabled { opacity: 0.5; cursor: default; }

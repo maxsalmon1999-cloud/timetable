@@ -1,0 +1,9 @@
+rules_version = '2';
+// Each account can read and write only its own plans (users/<uid>/items/<key>, see src/lib/syncModel.ts).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/items/{key} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

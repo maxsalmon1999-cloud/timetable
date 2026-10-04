@@ -18,6 +18,8 @@ import { useCalendarSync } from './lib/useCalendarSync'
 import { SyncButton } from './components/SyncButton'
 import { UpdateNotice } from './components/UpdateNotice'
 import { TodoMenu, type Scheduled } from './components/TodoMenu'
+import { CloudButton } from './components/CloudSync'
+import { useCloudSync } from './lib/useCloudSync'
 import { useUpdater } from './lib/useUpdater'
 
 type DragKind =
@@ -75,7 +77,8 @@ function saveActivity(d: AppData, a: Activity): AppData {
 }
 
 export default function App() {
-  const { data, update, undo, redo, canUndo, canRedo, status, retrySave, folder, restoredFrom } = useAppData()
+  const { data, update, undo, redo, canUndo, canRedo, status, retrySave, folder, restoredFrom, applyRemote, updateSync } = useAppData()
+  const cloud = useCloudSync(data, applyRemote, updateSync)
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [drag, setDrag] = useState<Drag | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -380,6 +383,7 @@ export default function App() {
         version={updater.version}
       >
         <UpdateNotice state={updater.state} canRestart={status.kind === 'saved'} onRestart={updater.restart} />
+        <CloudButton cloud={cloud} />
       </Sidebar>
 
       <main className="main">

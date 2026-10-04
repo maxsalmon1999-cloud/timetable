@@ -72,4 +72,9 @@ export interface AppData {
    * (block id, or calendar `eventIdentifier@startMs|YYYY-MM-DD`). The items themselves are never copied.
    */
   todoTicks?: Record<string, string[]>
+  /**
+   * This device's link to cloud sync (never synced itself): the signed-in account, and a fingerprint of every synced
+   * doc as of the last sync, for the three-way merge in lib/syncModel.ts. Missing when sync is off.
+   */
+  sync?: { uid: string; base: Record<string, string> }
 }

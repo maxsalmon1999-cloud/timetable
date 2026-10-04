@@ -27,3 +27,6 @@ dist-ssr
 /timetable.json
 /Backups/
 timetable-damaged-*.json
+
+# Firebase emulator logs
+*-debug.log

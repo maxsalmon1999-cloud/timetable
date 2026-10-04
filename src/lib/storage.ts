@@ -5,7 +5,9 @@ import { invoke, isTauri } from './tauri'
 // (src-tauri/src/storage.rs: atomic writes + daily backups in ~/Documents/Timetable).
 // In a plain browser (npm run dev) it falls back to localStorage.
 
-const KEY = 'timetable-data-v1'
+// in the browser, ?device=b keeps a second copy, to try sync between two "devices" in two tabs
+const device = new URLSearchParams(location.search).get('device')
+const KEY = 'timetable-data-v1' + (device ? `-${device}` : '')
 
 export interface LoadResult {
   data: AppData | null
