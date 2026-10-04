@@ -5,9 +5,13 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let builder = tauri::Builder::default();
+  // the Mac app updates itself; the iPad app gets updates from TestFlight
+  #[cfg(desktop)]
+  let builder = builder
     .plugin(tauri_plugin_updater::Builder::new().build())
-    .plugin(tauri_plugin_process::init())
+    .plugin(tauri_plugin_process::init());
+  builder
     .setup(|app| {
       app.manage(storage::Storage::new(app.handle()));
       if cfg!(debug_assertions) {

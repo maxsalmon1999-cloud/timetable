@@ -24,12 +24,17 @@ log = "0.4"
 tauri = { version = "2.12.0", features = [] }
 tauri-plugin-log = "2"
 chrono = "0.4.45"
+
+# self-updating and restarting: the Mac app only (the iPad app updates through TestFlight)
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 
-[target.'cfg(target_os = "macos")'.dependencies]
+# Apple Calendar (EventKit), on the Mac and the iPad
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 objc2 = "0.6"
 block2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSDate", "NSArray", "NSString", "NSError", "NSPredicate"] }
-objc2-app-kit = { version = "0.3", features = ["NSColor", "NSColorSpace"] }
-objc2-event-kit = { version = "0.3", features = ["EKEventStore", "EKEvent", "EKCalendar", "EKCalendarItem", "EKObject", "EKTypes", "block2", "objc2-app-kit"] }
+objc2-core-foundation = "0.3"
+objc2-core-graphics = { version = "0.3", features = ["CGColor", "CGColorSpace"] }
+objc2-event-kit = { version = "0.3", features = ["EKEventStore", "EKEvent", "EKCalendar", "EKCalendarItem", "EKObject", "EKTypes", "block2", "objc2-core-graphics"] }

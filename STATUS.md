@@ -324,3 +324,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   stars, note ladder, progress meter, day-done banner + confetti, ✓ zero badges, add/clear motion, sound toggle. Not yet released.
 - **2026-10-04**: Developer ID signing switched on (Team DR6GPTU9UX); release workflow and script set up for notarisation.
   Awaiting Max's Apple secrets before the first notarised release.
+- **2026-10-04 (in progress)**: Cloud sync (Firebase, `src/lib/syncModel.ts` three-way merge + tests, `cloud.ts`, `useCloudSync.ts`,
+  `CloudSync.tsx`; verified with emulators: two browser "devices", first-sync merge, live updates, no write loop). Off until
+  `src/lib/firebaseConfig.ts` has a config. iPad groundwork: `tauri ios init` (gen/apple), Rust compiles for iOS sim (calendar
+  colour via CGColor, updater/process desktop-only, capabilities split). NOT done yet: iPad Info.plist (landscape, calendar
+  strings, Files sharing), touch drag/hover, hide Mac-only UI on iPad, simulator run, TestFlight workflow.

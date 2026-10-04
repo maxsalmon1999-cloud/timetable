@@ -38,19 +38,21 @@ pub async fn calendar_events(start_ms: f64, end_ms: f64) -> Result<Vec<CalEvent>
     Ok(events)
 }
 
+/// Mac: System Settings → Privacy & Security → Calendars. (The iPad opens its Settings app from the web side.)
 #[tauri::command]
 pub fn open_calendar_privacy_settings() {
+    #[cfg(target_os = "macos")]
     let _ = std::process::Command::new("open")
         .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")
         .spawn();
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 mod imp {
     use super::CalEvent;
     use block2::RcBlock;
     use objc2::{available, rc::Retained, runtime::Bool};
-    use objc2_app_kit::{NSColor, NSColorSpace};
+    use objc2_core_graphics::{CGColor, CGColorRenderingIntent, CGColorSpace, kCGColorSpaceSRGB};
     use objc2_event_kit::{EKAuthorizationStatus, EKCalendarType, EKEntityType, EKEventStore};
     use objc2_foundation::{NSArray, NSDate, NSError, NSString};
     use std::sync::mpsc;
@@ -78,7 +80,7 @@ mod imp {
         });
         let handler = RcBlock::as_ptr(&block);
         unsafe {
-            if available!(macos = 14.0) {
+            if available!(macos = 14.0, ios = 17.0) {
                 store.requestFullAccessToEventsWithCompletion(handler);
             } else {
                 #[allow(deprecated)]
@@ -89,12 +91,20 @@ mod imp {
         rx.recv().unwrap_or(false)
     }
 
-    fn hex(color: &NSColor) -> String {
-        let Some(c) = color.colorUsingColorSpace(&NSColorSpace::sRGBColorSpace()) else {
-            return "#8A8F98".into();
+    /// the calendar's colour as #RRGGBB (CGColor works on both the Mac and the iPad)
+    fn hex(color: Option<&CGColor>) -> String {
+        const GREY: &str = "#8A8F98";
+        let Some(srgb) = (unsafe { CGColorSpace::with_name(Some(kCGColorSpaceSRGB)) }) else { return GREY.into() };
+        let Some(c) = (unsafe { CGColor::new_copy_by_matching_to_color_space(Some(&srgb), CGColorRenderingIntent(0), color, None) }) else {
+            return GREY.into();
         };
+        if CGColor::number_of_components(Some(&c)) < 3 {
+            return GREY.into();
+        }
+        let p = CGColor::components(Some(&c));
+        let v = |i: usize| unsafe { *p.add(i) };
         let to = |v: f64| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-        format!("#{:02X}{:02X}{:02X}", to(c.redComponent()), to(c.greenComponent()), to(c.blueComponent()))
+        format!("#{:02X}{:02X}{:02X}", to(v(0)), to(v(1)), to(v(2)))
     }
 
     pub fn events(start_ms: f64, end_ms: f64) -> Result<Vec<CalEvent>, String> {
@@ -129,7 +139,7 @@ mod imp {
                         id: format!("{}@{}", e.eventIdentifier().map(|s| s.to_string()).unwrap_or_default(), start),
                         title: e.title().to_string(),
                         calendar: cal.as_ref().map(|c| c.title().to_string()).unwrap_or_default(),
-                        color: cal.as_ref().map(|c| hex(&c.color())).unwrap_or_else(|| "#8A8F98".into()),
+                        color: hex(cal.as_ref().and_then(|c| c.CGColor()).as_deref()),
                         start,
                         end: e.endDate().timeIntervalSince1970() * 1000.0,
                         all_day: e.isAllDay(),
@@ -142,7 +152,7 @@ mod imp {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod imp {
     use super::CalEvent;
     pub fn status() -> &'static str {
