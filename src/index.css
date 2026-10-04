@@ -60,6 +60,10 @@ h1, h2, p { margin: 0; }
 .app { height: 100%; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
 .app.dragging, .app.dragging * { cursor: grabbing !important; }
 .shell { flex: 1; min-height: 0; display: flex; gap: 16px; padding: 16px; }
+/* iPads with rounded screens: keep clear of the corners and the home bar */
+@supports (padding: max(0px)) {
+  .shell { padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+}
 /* the native traffic lights sit here in the app (tauri.conf trafficLightPosition) */
 .traffic-light-space { width: 52px; height: 14px; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
@@ -695,3 +699,14 @@ input.todo-edit { flex: 1; height: 32px; padding: 0 8px; font-size: 15px; border
 .sync-message.bad { color: var(--clash-ink); }
 .link.left { margin-right: auto; }
 .link:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- touch (iPad) ---------- */
+/* the week never scrolls, so every touch on it is ours: drags, resizes and drawing new blocks */
+.grid-card, .item, .drag-chip { touch-action: none; }
+/* the activity list may scroll up and down; a sideways drag picks an activity up */
+.activity { touch-action: pan-y; }
+html { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+@media (pointer: coarse) {
+  /* a finger-sized grip at the bottom of each block */
+  .resize-handle { height: 16px; bottom: -4px; }
+}

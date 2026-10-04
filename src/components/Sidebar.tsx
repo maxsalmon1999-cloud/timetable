@@ -3,7 +3,7 @@ import { CursorClickIcon, HandGrabbingIcon, PencilSimpleIcon, PlusIcon, Selectio
 import type { Activity } from '../lib/types'
 import { fmtDuration } from '../lib/dates'
 import { discIcon } from '../lib/icons'
-import { isTauri } from '../lib/tauri'
+import { isMacApp } from '../lib/tauri'
 import { ActivityEditor } from './ActivityEditor'
 import { Confirm, Dots } from './Modal'
 import { SaveIndicator } from './SaveIndicator'
@@ -32,7 +32,7 @@ export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus,
       <div className="panel-head pink" data-tauri-drag-region>
         <div className="panel-title" data-tauri-drag-region>
           {/* in the app the real window buttons sit here instead of the decorative dots */}
-          {isTauri ? <div className="traffic-light-space" data-tauri-drag-region /> : <Dots />}
+          {isMacApp ? <div className="traffic-light-space" data-tauri-drag-region /> : <Dots />}
           <h1 data-tauri-drag-region>Activities</h1>
         </div>
         <button className="btn square lemon" title="New activity" onClick={() => setEditing('new')}>

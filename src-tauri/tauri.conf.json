@@ -51,7 +51,11 @@
       "signingIdentity": "Developer ID Application: Max Salmon (DR6GPTU9UX)",
       "entitlements": "Entitlements.plist"
     },
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "iOS": {
+      "developmentTeam": "DR6GPTU9UX",
+      "minimumSystemVersion": "16.0"
+    }
   },
   "plugins": {
     "updater": {

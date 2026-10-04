@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged into the iPad app's Info.plist by Tauri (the Mac app uses Info.plist next to this file). -->
+<plist version="1.0">
+<dict>
+	<!-- iPadOS asks these when she taps Sync with Calendar; without them the app is closed on the spot -->
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Timetable shows your calendar events on your week so you can plan around them. It never changes your calendar.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Timetable shows your calendar events on your week so you can plan around them. It never changes your calendar.</string>
+	<!-- her plans and daily backups appear in the Files app (On My iPad › Timetable), like Documents on the Mac -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<!-- landscape only, full screen (no Split View), no status bar -->
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UIStatusBarHidden</key>
+	<true/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+</dict>
+</plist>

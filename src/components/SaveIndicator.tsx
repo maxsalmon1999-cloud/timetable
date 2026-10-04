@@ -1,6 +1,7 @@
 import { ArrowClockwiseIcon, CheckCircleIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import type { SaveStatus } from '../lib/store'
 import { revealDataFolder } from '../lib/storage'
+import { isMacApp } from '../lib/tauri'
 
 export function SaveIndicator({ status, folder, onRetry }: { status: SaveStatus; folder: string | null; onRetry: () => void }) {
   return (
@@ -21,7 +22,7 @@ export function SaveIndicator({ status, folder, onRetry }: { status: SaveStatus;
           All saved
         </span>
       )}
-      {folder && (
+      {folder && isMacApp && (
         <button className="link" title={folder} onClick={() => revealDataFolder()}>
           Show files
         </button>

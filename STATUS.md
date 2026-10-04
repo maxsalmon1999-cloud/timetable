@@ -333,3 +333,13 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   off). Verified the download: Gatekeeper "accepted, source=Notarized Developer ID", ticket stapled, universal, calendar
   entitlement, latest.json has both platforms. Notarisation took about 50 minutes. Lesson: never push to main while the
   Release workflow runs; its final `git push` fails and nothing is published (happened once, re-ran).
+- **2026-10-04**: iPad app runs in the simulator (iPad A16, iOS 27): `src-tauri/Info.ios.plist` (calendar strings, landscape
+  only, full screen, no status bar, Files sharing, no-encryption flag), iPad-only device family, team DR6GPTU9UX, iOS 16+.
+  Web side: `isIPad`/`isMacApp` in lib/tauri.ts (touch points; `?ipad=1` previews in a browser) hide the traffic-light gap,
+  Show files, self-updater and System Settings button on iPad; touch: `touch-action` on the grid (none) and activities (pan-y),
+  pointercancel drops a drag, 10px tap slop for fingers, 16px resize grip on coarse pointers, no pinch zoom, safe-area
+  padding. Simulator build: `npx tauri ios build --debug --target aarch64-sim`. Screenshot showed the full week rendering;
+  tapping (calendar prompt, drags) not yet tested (needs simulator access in the Claude panel).
+  TestFlight: `.github/workflows/testflight.yml` (after each Release, monthly, or by hand) builds with automatic signing via
+  an App Store Connect API key and uploads with altool, build number = run number. Needs secrets from
+  `scripts/setup-testflight-secrets.sh` and the app record in App Store Connect. Untested until then.

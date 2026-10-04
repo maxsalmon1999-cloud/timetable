@@ -9,6 +9,7 @@ import { BlockEditor } from './components/BlockEditor'
 import { TemplatesMenu } from './components/TemplatesMenu'
 import { Confirm } from './components/Modal'
 import { revealDataFolder } from './lib/storage'
+import { isIPad } from './lib/tauri'
 import { accessStatus, eventsForDay, openPrivacySettings, requestAccess } from './lib/calendar'
 import { DEFAULT_TARGETS, visibleRange, type RangeTargets } from './lib/dayRange'
 import { discIcon, PALETTE } from './lib/icons'
@@ -138,7 +139,14 @@ export default function App() {
         message:
           'To show your Apple Calendar events here, open System Settings → Privacy & Security → Calendars, switch Timetable on (Full Access), then press Sync again.',
         cancelLabel: 'Close',
-        actions: [{ label: 'Open System Settings', kind: 'primary', run: openPrivacySettings }],
+        ...(isIPad
+          ? {
+              message:
+                'To show your calendar events here, open the Settings app, tap Apps → Timetable → Calendars, choose Full Access, then press Sync again.',
+              actions: [],
+              cancelLabel: 'OK',
+            }
+          : { actions: [{ label: 'Open System Settings', kind: 'primary' as const, run: openPrivacySettings }] }),
       })
       return
     }
@@ -283,7 +291,8 @@ export default function App() {
 
     const onMove = (e: PointerEvent) => {
       const d = dragRef.current!
-      const active = d.active || Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 4
+      // fingers wobble more than a mouse, so a tap needs more room before it counts as a drag
+      const active = d.active || Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > (e.pointerType === 'touch' ? 10 : 4)
       setDrag({ ...d, x: e.clientX, y: e.clientY, active, preview: active ? computePreview(d, e.clientX, e.clientY) : null })
     }
 
@@ -323,13 +332,17 @@ export default function App() {
     }
 
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrag(null)
+    // the iPad took the touch over (e.g. she scrolled the activity list instead of dragging): drop the drag
+    const onCancel = () => setDrag(null)
 
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
     window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
       window.removeEventListener('keydown', onKey)
     }
     // re-bind only when a drag starts/ends

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { isTauri } from './tauri'
+import { isMacApp, isTauri } from './tauri'
 
 export type UpdateState = { kind: 'idle' } | { kind: 'installed'; version: string }
 
@@ -18,7 +18,7 @@ export function useUpdater() {
   useEffect(() => {
     if (!isTauri) return
     import('@tauri-apps/api/app').then((m) => m.getVersion()).then(setVersion)
-    if (!import.meta.env.PROD) return // never self-update a dev build
+    if (!import.meta.env.PROD || !isMacApp) return // never self-update a dev build; the iPad updates through TestFlight
 
     let busy = false
     let installed = false
