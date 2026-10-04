@@ -130,11 +130,13 @@ export default function App() {
 
   // ---------- data operations ----------
   const updateBlocks = (fn: (bs: Block[]) => Block[]) => update((d) => withBlocks(d, fn))
+  /** change one day's to-do list in the week on screen (one undo step) */
   const updateTodos = (day: number, fn: (list: Todo[]) => Todo[]) =>
     update((d) => {
-      const todos = Array.from({ length: 7 }, (_, i) => d.todos?.[i] ?? [])
-      todos[day] = fn(todos[day])
-      return { ...d, todos }
+      const lists = Array.from({ length: 7 }, (_, i) => d.todos?.[weekKey]?.[i] ?? [])
+      lists[day] = fn(lists[day])
+      const { [weekKey]: _, ...others } = d.todos ?? {} // eslint-disable-line @typescript-eslint/no-unused-vars
+      return { ...d, todos: lists.some((l) => l.length) ? { ...others, [weekKey]: lists } : others }
     })
 
   const saveBlock = (b: Block, addToBank: boolean) =>
@@ -396,11 +398,11 @@ export default function App() {
         ) : (
         <header className="toolbar" data-tauri-drag-region>
           <div className="nav" data-tauri-drag-region>
-            <button className="btn" disabled={isThisWeek} onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</button>
-            <button className="btn square" title="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+            <button className="btn week-nav" disabled={isThisWeek} onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</button>
+            <button className="btn square week-nav" title="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>
               <CaretLeftIcon size={22} weight="bold" />
             </button>
-            <button className="btn square" title="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+            <button className="btn square week-nav" title="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>
               <CaretRightIcon size={22} weight="bold" />
             </button>
             <h2 className="week-label" data-tauri-drag-region>{monthLabel(weekStart)}</h2>
@@ -438,7 +440,7 @@ export default function App() {
                 })
               }
             />
-            <TodoMenu todos={data.todos ?? []} onChange={updateTodos} />
+            <TodoMenu dates={dates} todos={data.todos?.[weekKey] ?? []} onChange={updateTodos} />
           </div>
         </header>
         )}

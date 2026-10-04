@@ -1,5 +1,6 @@
 import type { AppData } from './types'
 import { COLOR_MIGRATION, guessIcon } from './icons'
+import { startOfWeek, toISO } from './dates'
 
 /**
  * Bring saved data up to the current shape. Must always be able to open any file
@@ -30,6 +31,9 @@ export function migrate(raw: Raw): AppData {
       return a ? { ...x, icon: a.icon, ...(a.iconWeight ? { iconWeight: a.iconWeight } : {}) } : { ...x, ...iconOf(guessIcon(x.title)) }
     })
   }
+
+  // unreleased dev builds kept one week-less to-do pad (Todo[][]); file it under the current week
+  if (Array.isArray(d.todos)) d = { ...d, todos: { [toISO(startOfWeek(new Date()))]: d.todos } }
 
   return { ...d, version: 3 } as AppData
 }

@@ -2,27 +2,36 @@ import { useEffect, useRef, useState } from 'react'
 import { BroomIcon, CheckIcon, ListChecksIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
 import type { Todo } from '../lib/types'
 import { uid } from '../lib/constants'
+import { fromISO, toISO, weekLabel } from '../lib/dates'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const todayIndex = () => (new Date().getDay() + 6) % 7
+/** the weekday index of today if it's in this week, else -1 */
+const todayIn = (dates: string[]) => dates.indexOf(toISO(new Date()))
+const dayMonth = (iso: string) => fromISO(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
 
 interface Props {
+  /** the 7 dates (YYYY-MM-DD) of the week on screen */
+  dates: string[]
+  /** that week's lists, index 0 = Monday */
   todos: Todo[][]
   /** change one weekday's list (one undo step) */
   onChange: (day: number, fn: (list: Todo[]) => Todo[]) => void
 }
 
-/** Toolbar button + the to-do pad that pops out under it. Closes on × , Escape or a click outside. */
-export function TodoMenu({ todos, onChange }: Props) {
+/**
+ * Toolbar button + the to-do pad that pops out under it, for the week on screen. Closes on ×, Escape or a click
+ * outside; stays open while she moves between weeks (Today / ‹ ›) so she can look through them.
+ */
+export function TodoMenu({ dates, todos, onChange }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const todayLeft = (todos[todayIndex()] ?? []).filter((t) => !t.done).length
+  const weekLeft = todos.flat().filter((t) => !t.done).length
 
   useEffect(() => {
     if (!open) return
     const onDown = (e: PointerEvent) => {
       const t = e.target as HTMLElement
-      if (!ref.current?.contains(t) && !t.closest('.modal-backdrop')) setOpen(false)
+      if (!ref.current?.contains(t) && !t.closest('.modal-backdrop, .week-nav')) setOpen(false)
     }
     // Escape while editing a line only cancels that edit
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !(e.target as Element | null)?.closest?.('.todo-edit') && setOpen(false)
@@ -39,19 +48,20 @@ export function TodoMenu({ todos, onChange }: Props) {
       <button className={'btn mint' + (open ? ' active' : '')} aria-expanded={open} title="To-do list" onClick={() => setOpen(!open)}>
         <ListChecksIcon size={22} weight="bold" />
         <span className="btn-label">To-do</span>
-        {todayLeft > 0 && <span className="badge mono" title={`${todayLeft} left for today`}>{todayLeft}</span>}
+        {weekLeft > 0 && <span className="badge mono" title={`${weekLeft} left this week`}>{weekLeft}</span>}
       </button>
-      {open && <TodoPad todos={todos} onChange={onChange} onClose={() => setOpen(false)} />}
+      {/* keyed by week so it opens on the right day of each week */}
+      {open && <TodoPad key={dates[0]} dates={dates} todos={todos} onChange={onChange} onClose={() => setOpen(false)} />}
     </div>
   )
 }
 
-/** A to-do pad with a tab per weekday. Not tied to dates: the same lists show whichever week is on screen. */
-function TodoPad({ todos, onChange, onClose }: Props & { onClose: () => void }) {
-  const [day, setDay] = useState(todayIndex)
+/** One week's to-do pad: a tab per day. Opens on today in the current week, Monday in any other. */
+function TodoPad({ dates, todos, onChange, onClose }: Props & { onClose: () => void }) {
+  const today = todayIn(dates)
+  const [day, setDay] = useState(Math.max(0, today))
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
-  const today = todayIndex()
   const list = todos[day] ?? []
   const left = (d: number) => (todos[d] ?? []).filter((t) => !t.done).length
   const ticked = list.length - left(day)
@@ -76,7 +86,10 @@ function TodoPad({ todos, onChange, onClose }: Props & { onClose: () => void }) 
   return (
     <div className="todo panel" role="dialog" aria-label="To-do list">
       <div className="panel-head mint">
-        <h1 className="todo-title">To-do</h1>
+        <div className="panel-title">
+          <h1 className="todo-title">To-do</h1>
+          <span className="mono small">{weekLabel(fromISO(dates[0]))}</span>
+        </div>
         <button className="btn square" title="Close to-do list" onClick={onClose}>
           <XIcon size={22} weight="bold" />
         </button>
@@ -95,14 +108,17 @@ function TodoPad({ todos, onChange, onClose }: Props & { onClose: () => void }) 
               setEditing(null)
             }}
           >
-            {name.slice(0, 2)}
+            <span className="todo-tab-dow">{name.slice(0, 2)}</span>
+            <span className="todo-tab-date">{fromISO(dates[i]).getDate()}</span>
             {left(i) > 0 && <span className="todo-count mono">{left(i)}</span>}
           </button>
         ))}
       </div>
 
       <div className="todo-day">
-        <h2>{DAYS[day]}</h2>
+        <h2>
+          {DAYS[day]} <span className="todo-day-date">{dayMonth(dates[day])}</span>
+        </h2>
         <span className="mono small">{list.length ? (left(day) ? `${left(day)} left` : 'All done!') : ''}</span>
       </div>
 

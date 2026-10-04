@@ -59,7 +59,7 @@ src/
                           clash rings, hitTest (pointer → {date, minute}) exposed via ref
   components/HoverCard.tsx      details card beside a hovered block / calendar event / all-day event (portal, fixed,
                                 pointer-events none). Hover state + lookup live in WeekGrid (useHover, HoverDetails)
-  components/TodoMenu.tsx       toolbar To-do button + the to-do pad that pops out under it (Mon–Sun tabs, AppData.todos)
+  components/TodoMenu.tsx       toolbar To-do button + the to-do pad that pops out under it (per-week, Mon–Sun tabs)
   components/ActivityIcon.tsx   renders an icon by name (or first-letter fallback in discs)
   components/IconLibrary.tsx    search + category pills + icon grid (activity editor, block editor "More icons…")
   components/Sidebar.tsx  activity bank + usage hints + save pill + version
@@ -157,16 +157,19 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - Content is looked up live by id (`HoverDetails`), so an undo that removes the item removes the card.
 
 ### To-do pad (2026-10-04)
-- Toolbar **To-do** button (mint, last on the right; badge = items left for today's weekday) pops out a 340px card
+- Toolbar **To-do** button (mint, last on the right; badge = unticked items in the week on screen) pops out a 340px card
   under it, like the Templates menu: floats over the grid, closes on ×, Escape (unless editing a line) or a click outside.
-  Not remembered between launches.
-- `AppData.todos?: Todo[][]` (7 lists, 0 = Monday, `{id, text, done}`), **not tied to dates**: same lists every week.
-  Optional field, no version bump (migrate spreads unknown fields through). Every add/tick/edit/remove/clear = one undo step.
-- Tabs Mo–Su (today lemon, selected grape, coral count of unticked); opens on today. Click text to edit inline
+  **Stays open on Today / ‹ ›** (`.week-nav` buttons are excluded from click-outside) so she can flick through weeks.
+- **Per week**: `AppData.todos?: Record<mondayISO, Todo[][]>` (7 lists, 0 = Monday, `{id, text, done}`). Past weeks keep
+  their lists; a week's key is removed when all its lists are empty. Optional field, no version bump. migrate.ts files
+  the unreleased week-less shape (`Todo[][]`) under the current week. Every add/tick/edit/remove/clear = one undo step.
+- Header shows the week's dates. Tabs show weekday + date (today lemon, selected grape, coral count of unticked).
+  Opens on today in the current week, Monday in other weeks (`TodoPad` keyed by week). Click text to edit inline
   (Enter/blur saves, Escape cancels, emptying it removes). "Clear N ticked" removes ticked items for that day.
+- Only in the normal toolbar (not while building a template).
 - Toolbar fit: "Week templates" label shortened to "Templates"; `.main` container ≤1140px hides the Templates + To-do
   labels, ≤980px hides all action labels. Checked no toolbar overflow for main widths 800–1240 with the worst-case title.
-- Browser-verified at 1440×900 and 1100×680. Not yet released.
+- Browser-verified at 1440×900 and 1100×680 (per-week lists, nav keeps it open, old-shape migration). Not yet released.
 
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
@@ -284,4 +287,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   Expect it to recur on updates until Developer ID signing + notarisation (Max is setting up an Apple Developer account).
 - **2026-10-04**: Week title shows only the month ("September", "September – October"); the day header already has the dates.
   `monthLabel` in dates.ts; `weekLabel` (full dates) is still used in the clear-week confirm. Not yet released.
-- **2026-10-04**: To-do pad: toolbar To-do button pops out a Mon–Sun tabbed checklist (not tied to dates). Not yet released.
+- **2026-10-04**: To-do pad: toolbar To-do button pops out a Mon–Sun tabbed checklist for the week on screen; past weeks
+  keep theirs. Not yet released.

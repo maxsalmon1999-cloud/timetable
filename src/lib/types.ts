@@ -63,8 +63,8 @@ export interface AppData {
    */
   templateDraft?: { blocks: Block[] }
   /**
-   * To-do pad: one list per weekday, index 0 = Monday (like TemplateBlock.day). Not tied to any date, so the same
-   * lists show whichever week is on screen. Missing until she adds the first to-do.
+   * To-do pad, per week: Monday (YYYY-MM-DD) → 7 lists, index 0 = Monday (like TemplateBlock.day).
+   * Past weeks keep their lists. A week's key is dropped when all its lists are empty.
    */
-  todos?: Todo[][]
+  todos?: Record<string, Todo[][]>
 }
