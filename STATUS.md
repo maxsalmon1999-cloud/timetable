@@ -218,7 +218,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - [ ] "Restored from backup" notice not yet seen in the native window (logic verified via files)
 - [x] Hover card on blocks/events (browser-verified at 1450×820 and 1100×680: delay, instant swap, hide on leave/press/drag,
       Sunday flips left, template weekday). Calendar location/notes: Rust type-checked for aarch64-apple-darwin, **not yet
-      seen with real EventKit data**. Not yet released.
+      seen with real EventKit data**. Released in v0.3.1.
 - [x] Apple Calendar: sync button + current-week prompt, live refresh, all-day row, conflict highlighting (UI verified in
       browser with sample events; native EventKit build compiles/signs; real-calendar read awaiting Max clicking Allow)
 
@@ -264,3 +264,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   native tooltips.
 - **2026-09-28**: Releases can run remotely: GitHub Actions workflow "Release" builds, signs and publishes on GitHub's Mac.
   `release.mjs` now also takes the key from `TAURI_SIGNING_PRIVATE_KEY` and finds rustup on PATH.
+- **2026-10-04**: **Released v0.3.1** (hover card), the first release built by the GitHub Actions workflow. Repo secret
+  `TAURI_SIGNING_PRIVATE_KEY` set from `~/.tauri/timetable.key`. Checked: universal, calendar entitlement, latest.json has both platforms.
+- **2026-10-04**: Known issue: her calendar sync worked, then broke (likely after an auto-update). Max fixed it on her Mac by hand.
+  Cause is probably ad-hoc signing: each build has a new code hash, so macOS's saved Calendar permission stops matching.
+  Expect it to recur on updates until Developer ID signing + notarisation (Max is setting up an Apple Developer account).
