@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps,
 import { useAppData } from './lib/store'
 import type { Activity, AppData, Block, Template, TemplateBlock } from './lib/types'
 import { MAX_END, MIN_START, SNAP, snap, uid } from './lib/constants'
-import { addDays, fmtTime, startOfWeek, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
+import { addDays, fmtTime, startOfWeek, monthLabel, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
 import { WeekGrid, type HitTest, type Preview } from './components/WeekGrid'
 import { Sidebar } from './components/Sidebar'
 import { BlockEditor } from './components/BlockEditor'
@@ -395,7 +395,7 @@ export default function App() {
             <button className="btn square" title="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>
               <CaretRightIcon size={22} weight="bold" />
             </button>
-            <h2 className="week-label" data-tauri-drag-region>{weekLabel(weekStart)}</h2>
+            <h2 className="week-label" data-tauri-drag-region>{monthLabel(weekStart)}</h2>
             <SyncButton synced={synced} state={cal.state} onClick={syncWeek} />
           </div>
           <div className="nav" data-tauri-drag-region>

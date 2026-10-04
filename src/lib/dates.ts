@@ -34,6 +34,18 @@ export function fmtDuration(min: number) {
 }
 
 /** "21 – 27 September" (year added when it isn't this year) */
+/** Toolbar title: just the month(s), since the day header shows the dates. "September", "September – October" */
+export function monthLabel(weekStart: Date) {
+  const end = addDays(weekStart, 6)
+  const month = (d: Date) => d.toLocaleDateString('en-GB', { month: 'long' })
+  const thisYear = new Date().getFullYear()
+  const year = (d: Date) => (d.getFullYear() === thisYear ? '' : ` ${d.getFullYear()}`)
+  if (weekStart.getFullYear() !== end.getFullYear())
+    return `${month(weekStart)} ${weekStart.getFullYear()} – ${month(end)} ${end.getFullYear()}`
+  if (weekStart.getMonth() === end.getMonth()) return `${month(end)}${year(end)}`
+  return `${month(weekStart)} – ${month(end)}${year(end)}`
+}
+
 export function weekLabel(weekStart: Date) {
   const end = addDays(weekStart, 6)
   const month = (d: Date) => d.toLocaleDateString('en-GB', { month: 'long' })

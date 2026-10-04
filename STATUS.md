@@ -269,3 +269,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-10-04**: Known issue: her calendar sync worked, then broke (likely after an auto-update). Max fixed it on her Mac by hand.
   Cause is probably ad-hoc signing: each build has a new code hash, so macOS's saved Calendar permission stops matching.
   Expect it to recur on updates until Developer ID signing + notarisation (Max is setting up an Apple Developer account).
+- **2026-10-04**: Week title shows only the month ("September", "September – October"); the day header already has the dates.
+  `monthLabel` in dates.ts; `weekLabel` (full dates) is still used in the clear-week confirm. Not yet released.
