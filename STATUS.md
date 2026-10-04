@@ -176,7 +176,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - Toolbar fit: "Week templates" label shortened to "Templates"; `.main` container ≤1140px hides the Templates + To-do
   labels, ≤980px hides all action labels. Checked no toolbar overflow for main widths 800–1240 with the worst-case title.
 - Browser-verified at 1440×900 and 1100×680 (per-week lists, nav keeps it open, old-shape migration, pulled-in blocks +
-  sample events, ticks saved per week). Not yet released.
+  sample events, ticks saved per week). Released in v0.4.0.
 
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
@@ -293,7 +293,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   Cause is probably ad-hoc signing: each build has a new code hash, so macOS's saved Calendar permission stops matching.
   Expect it to recur on updates until Developer ID signing + notarisation (Max is setting up an Apple Developer account).
 - **2026-10-04**: Week title shows only the month ("September", "September – October"); the day header already has the dates.
-  `monthLabel` in dates.ts; `weekLabel` (full dates) is still used in the clear-week confirm. Not yet released.
+  `monthLabel` in dates.ts; `weekLabel` (full dates) is still used in the clear-week confirm. Released in v0.4.0.
 - **2026-10-04**: To-do pad: toolbar To-do button pops out a Mon–Sun tabbed checklist for the week on screen; past weeks
-  keep theirs. Not yet released.
-- **2026-10-04**: To-do pad pulls in each day's timetable blocks and calendar events (with start times), tickable. Not yet released.
+  keep theirs. Released in v0.4.0.
+- **2026-10-04**: To-do pad pulls in each day's timetable blocks and calendar events (with start times), tickable. Released in v0.4.0.
+- **2026-10-04**: **Released v0.4.0** (GitHub Actions): to-do pad (per week, pulls in blocks + calendar events), month-only title.
