@@ -129,7 +129,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   replacing ad-hoc `-`. Notarisation runs when `APPLE_ID` + `APPLE_PASSWORD` (app-specific) + `APPLE_TEAM_ID` are set;
   `release.mjs` refuses to release without them and without the certificate (keychain locally, or `APPLE_CERTIFICATE`
   base64 .p12 + `APPLE_CERTIFICATE_PASSWORD` on GitHub, which Tauri imports into a temporary keychain). Repo secrets:
-  `APPLE_TEAM_ID` set; Max sets the other four himself (agents never handle them). Plain `npm run app:build` on Max's Mac
+  `APPLE_TEAM_ID` set; Max sets the other four himself with `bash scripts/setup-apple-secrets.sh` (agents may not write them). Plain `npm run app:build` on Max's Mac
   now signs with the Developer ID too (verified: Authority = Developer ID, timestamped, `codesign --verify` passes;
   Gatekeeper says "Unnotarized" until notarised). Why: ad-hoc builds change identity every release, so macOS forgot her
   Calendar/Documents permission after each update, and fresh installs needed "Open Anyway". The first Developer ID update
