@@ -52,6 +52,13 @@ try {
 } catch {
   fail('rustup not found (brew install rustup). Needed for the Intel + Apple Silicon build.')
 }
+// Developer ID signing + Apple notarisation: without them macOS shows "can't check for malware" and forgets
+// her Calendar/Documents permission after every update. Locally the certificate comes from Max's keychain;
+// on GitHub it comes from the APPLE_CERTIFICATE secret (base64 .p12) + APPLE_CERTIFICATE_PASSWORD.
+for (const v of ['APPLE_ID', 'APPLE_PASSWORD', 'APPLE_TEAM_ID'])
+  if (!process.env[v]) fail(`${v} is missing, needed to notarise the app with Apple. See STATUS.md, "Signing and notarisation".`)
+if (!process.env.APPLE_CERTIFICATE && !out('security find-identity -v -p codesigning').includes('Developer ID Application'))
+  fail('The Developer ID Application certificate is missing from this Mac (Xcode → Settings → Apple Accounts → Manage Certificates).')
 const targets = out('rustup target list --installed')
 for (const t of ['x86_64-apple-darwin', 'aarch64-apple-darwin'])
   if (!targets.includes(t)) fail(`Rust target ${t} missing (run: rustup target add ${t})`)

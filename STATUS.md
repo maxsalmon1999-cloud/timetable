@@ -124,6 +124,16 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   `~/.tauri/timetable.key` (Max adds it; agents never handle the key). The "Release vX" commit + tag are pushed to `main` by
   github-actions[bot], so pull before working locally. Agents can trigger it via the GitHub API from any session.
   Trade-off accepted by Max: the key also lives in GitHub's secret store, so his GitHub login (with 2FA) guards updates.
+- **Signing and notarisation** (2026-10-04): Max has an Apple Developer account (Individual, Team ID `DR6GPTU9UX`).
+  `tauri.conf.json` signs with "Developer ID Application: Max Salmon (DR6GPTU9UX)" (hardened runtime + Entitlements.plist),
+  replacing ad-hoc `-`. Notarisation runs when `APPLE_ID` + `APPLE_PASSWORD` (app-specific) + `APPLE_TEAM_ID` are set;
+  `release.mjs` refuses to release without them and without the certificate (keychain locally, or `APPLE_CERTIFICATE`
+  base64 .p12 + `APPLE_CERTIFICATE_PASSWORD` on GitHub, which Tauri imports into a temporary keychain). Repo secrets:
+  `APPLE_TEAM_ID` set; Max sets the other four himself (agents never handle them). Plain `npm run app:build` on Max's Mac
+  now signs with the Developer ID too (verified: Authority = Developer ID, timestamped, `codesign --verify` passes;
+  Gatekeeper says "Unnotarized" until notarised). Why: ad-hoc builds change identity every release, so macOS forgot her
+  Calendar/Documents permission after each update, and fresh installs needed "Open Anyway". The first Developer ID update
+  will ask her for permissions once more; after that they should stick.
 - Fresh install link (always the newest): https://github.com/maxsalmon1999-cloud/timetable/releases/latest/download/Timetable.dmg
 - **Updater signing key: `~/.tauri/timetable.key` (no password) on Max's Mac, NEVER in the repo.** Public key is in
   tauri.conf.json. If the private key is lost, her installed app can't accept updates; she'd need one manual reinstall of a
@@ -312,3 +322,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-10-04**: **Released v0.4.0** (GitHub Actions): to-do pad (per week, pulls in blocks + calendar events), month-only title.
 - **2026-10-04**: To-do tick rewards (handoff in `design_handoff_timetable_redesign/handoff/`): springy checkbox, glint +
   stars, note ladder, progress meter, day-done banner + confetti, ✓ zero badges, add/clear motion, sound toggle. Not yet released.
+- **2026-10-04**: Developer ID signing switched on (Team DR6GPTU9UX); release workflow and script set up for notarisation.
+  Awaiting Max's Apple secrets before the first notarised release.

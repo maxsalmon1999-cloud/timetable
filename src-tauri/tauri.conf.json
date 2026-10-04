@@ -48,7 +48,7 @@
     "category": "Productivity",
     "macOS": {
       "minimumSystemVersion": "11.0",
-      "signingIdentity": "-",
+      "signingIdentity": "Developer ID Application: Max Salmon (DR6GPTU9UX)",
       "entitlements": "Entitlements.plist"
     },
     "createUpdaterArtifacts": true

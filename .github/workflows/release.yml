@@ -2,7 +2,12 @@
 # (bump version, universal build, sign, commit + tag on main, GitHub release with latest.json).
 #
 # Run it: GitHub → Actions → Release → Run workflow (or Claude triggers it).
-# Needs the repository secret TAURI_SIGNING_PRIVATE_KEY = the contents of ~/.tauri/timetable.key.
+# Needs repository secrets:
+#   TAURI_SIGNING_PRIVATE_KEY   the contents of ~/.tauri/timetable.key (signs updates)
+#   APPLE_CERTIFICATE           base64 of the Developer ID Application certificate exported as .p12
+#   APPLE_CERTIFICATE_PASSWORD  that .p12's password
+#   APPLE_ID, APPLE_PASSWORD    Max's Apple ID and an app-specific password (notarisation)
+#   APPLE_TEAM_ID               DR6GPTU9UX
 name: Release
 
 on:
@@ -48,6 +53,12 @@ jobs:
       - name: Build, sign and publish
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # Tauri imports the certificate into a temporary keychain, signs with it, then notarises and staples
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GH_TOKEN: ${{ github.token }}
           # inputs go through env, never pasted into the script, so notes can contain anything
           BUMP: ${{ inputs.bump }}
