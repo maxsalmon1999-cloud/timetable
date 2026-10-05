@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppData } from './types'
 import { activeConfig } from './firebaseConfig'
 import { friendlyError, sendReset, signIn, signOut, signUp, watchDocs, watchUser, writeDocs, type CloudUser } from './cloud'
@@ -61,26 +61,41 @@ export function useCloudSync(
   }, [configured])
 
   const uid = user?.uid
+  /** bumps to reconnect after the cloud refused the connection */
+  const [attempt, setAttempt] = useState(0)
+  /** refusals in a row, for the back-off */
+  const failures = useRef(0)
   useEffect(() => {
     if (!uid) return
     let unsub: (() => void) | undefined
     let alive = true
+    let retry: ReturnType<typeof setTimeout> | undefined
     watchDocs(
       uid,
       (docs, meta) => {
         if (!alive) return
         setRemote({ uid, docs, ...meta })
-        if (!meta.fromCache) setError(null)
+        if (!meta.fromCache) {
+          setError(null)
+          failures.current = 0
+        }
       },
-      (e) => alive && setError(friendlyError(e)),
+      (e) => {
+        if (!alive) return
+        setError(friendlyError(e))
+        // a refused listener stops for good: try again in a while (10s, 20s, … up to 5 minutes)
+        retry = setTimeout(() => setAttempt((n) => n + 1), Math.min(10_000 * 2 ** failures.current++, 300_000))
+      },
     )
       .then((u) => (alive ? (unsub = u) : u()))
       .catch((e) => alive && setError(friendlyError(e)))
     return () => {
       alive = false
+      clearTimeout(retry)
       unsub?.()
     }
-  }, [uid])
+  }, [uid, attempt])
+
 
   // the merge: runs whenever her plans or the cloud copy change
   useEffect(() => {
