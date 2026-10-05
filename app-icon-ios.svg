@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- iPad/iPhone version of app-icon.svg: full-bleed (iOS rounds the corners itself), same header, dots and blocks -->
+  <rect width="1024" height="1024" fill="#FFFBF4"/>
+  <g transform="scale(1.28) translate(-100 -100)">
+    <rect x="100" y="100" width="800" height="230" fill="#FFE680"/>
+    <line x1="100" y1="330" x2="900" y2="330" stroke="#211C33" stroke-width="28"/>
+    <circle cx="240" cy="215" r="28" fill="#FF9A8A" stroke="#211C33" stroke-width="18"/>
+    <circle cx="330" cy="215" r="28" fill="#A8E8BF" stroke="#211C33" stroke-width="18"/>
+    <circle cx="420" cy="215" r="28" fill="#A9D6FF" stroke="#211C33" stroke-width="18"/>
+    <rect x="200" y="410" width="180" height="150" rx="30" fill="#A9D6FF" stroke="#211C33" stroke-width="24"/>
+    <rect x="410" y="470" width="180" height="270" rx="30" fill="#A8E8BF" stroke="#211C33" stroke-width="24"/>
+    <rect x="620" y="410" width="180" height="110" rx="30" fill="#FFC49E" stroke="#211C33" stroke-width="24"/>
+    <rect x="620" y="560" width="180" height="210" rx="30" fill="#FFB8D6" stroke="#211C33" stroke-width="24"/>
+    <rect x="200" y="600" width="180" height="200" rx="30" fill="#CDB9FF" stroke="#211C33" stroke-width="24"/>
+  </g>
+</svg>
