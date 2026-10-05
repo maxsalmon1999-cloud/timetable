@@ -47,6 +47,8 @@ export interface Todo {
   id: string
   text: string
   done: boolean
+  /** the day (YYYY-MM-DD) it was first meant for; unticked to-dos move on to today (lib/rollover.ts) and keep this */
+  since?: string
 }
 
 export interface AppData {

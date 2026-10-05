@@ -29,6 +29,8 @@ type Action =
   | { type: 'redo' }
   /** the other device's changes arrived: they replace the plans, and undo starts afresh so it can't undo them */
   | { type: 'remote'; data: AppData }
+  /** automatic housekeeping (e.g. to-dos moving on to today): no undo step */
+  | { type: 'silent'; fn: (d: AppData) => AppData }
   /** sync bookkeeping only (AppData.sync): no undo step */
   | { type: 'syncMeta'; fn: (s: AppData['sync']) => AppData['sync'] }
 
@@ -58,6 +60,11 @@ function reducer(s: State, a: Action): State {
     }
     case 'remote':
       return { past: [], present: a.data, future: [] }
+    case 'silent': {
+      if (!s.present) return s
+      const next = a.fn(s.present)
+      return next === s.present ? s : { ...s, present: next }
+    }
     case 'syncMeta': {
       if (!s.present) return s
       const { sync: _, ...rest } = s.present // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -129,6 +136,7 @@ export function useAppData() {
   const update = useCallback((fn: (d: AppData) => AppData) => dispatch({ type: 'update', fn }), [])
   const undo = useCallback(() => dispatch({ type: 'undo' }), [])
   const redo = useCallback(() => dispatch({ type: 'redo' }), [])
+  const updateSilently = useCallback((fn: (d: AppData) => AppData) => dispatch({ type: 'silent', fn }), [])
   const applyRemote = useCallback((data: AppData) => dispatch({ type: 'remote', data }), [])
   const updateSync = useCallback((fn: (s: AppData['sync']) => AppData['sync']) => dispatch({ type: 'syncMeta', fn }), [])
 
@@ -139,6 +147,7 @@ export function useAppData() {
     redo,
     applyRemote,
     updateSync,
+    updateSilently,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
     status,

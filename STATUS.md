@@ -343,3 +343,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   TestFlight: `.github/workflows/testflight.yml` (after each Release, monthly, or by hand) builds with automatic signing via
   an App Store Connect API key and uploads with altool, build number = run number. Needs secrets from
   `scripts/setup-testflight-secrets.sh` and the app record in App Store Connect. Untested until then.
+- **2026-10-05**: To-dos carry over: unticked to-dos from past days (any week) move onto today on launch, at midnight and on
+  focus (`lib/rollover.ts` + tests; store action `silent`, so no undo step; done in the data, so synced devices agree).
+  Each keeps `since` (first day it was meant for); from 3 days waiting it shows "Nd" and pulses red every 6s (reduced motion:
+  a static red edge). Only her own to-dos move; timetable/calendar items and ticked to-dos stay on their day.

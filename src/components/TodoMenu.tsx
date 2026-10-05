@@ -4,6 +4,7 @@ import type { IconWeight, Todo } from '../lib/types'
 import { uid } from '../lib/constants'
 import { fmtTime, fromISO, toISO, weekLabel } from '../lib/dates'
 import { discIcon } from '../lib/icons'
+import { daysBetween, STALE_DAYS } from '../lib/rollover'
 import { bump, confetti, glint, reducedMotion, setSoundOn, soundOn, sounds, tickPop } from '../lib/rewards'
 import { ActivityIcon } from './ActivityIcon'
 
@@ -200,7 +201,7 @@ function TodoPad(props: Props & { onClose: () => void }) {
     const text = draft.trim()
     if (!text) return
     const id = uid()
-    change((l) => [...l, { id, text, done: false }])
+    change((l) => [...l, { id, text, done: false, since: dates[day] }])
     setFresh(id)
     setDraft('')
     sounds.add()
@@ -350,10 +351,16 @@ function TodoPad(props: Props & { onClose: () => void }) {
           )
         })}
         {plan.length > 0 && list.length > 0 && <li className="todo-divider" aria-hidden />}
-        {list.map((t) => (
+        {list.map((t) => {
+          // waiting since its first day: from 3 days on it glows red now and then
+          const waited = t.since && !t.done ? daysBetween(t.since, toISO(new Date())) : 0
+          return (
           <li
             key={t.id}
-            className={'todo-item own' + (t.done ? ' done' : '') + (pressed === t.id ? ' pressed' : '') + (t.id === fresh ? ' fresh' : '')}
+            className={
+              'todo-item own' + (t.done ? ' done' : '') + (pressed === t.id ? ' pressed' : '') + (t.id === fresh ? ' fresh' : '') + (waited >= STALE_DAYS ? ' stale' : '')
+            }
+            title={waited > 0 ? `On your list since ${fromISO(t.since!).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}` : undefined}
           >
             <button className="todo-tick" role="checkbox" aria-checked={t.done} title={t.done ? 'Untick' : 'Tick off'} onClick={(e) => tickOwn(e, t)} {...press(t.id)}>
               <Box on={t.done} />
@@ -375,11 +382,13 @@ function TodoPad(props: Props & { onClose: () => void }) {
                 <span className="strike">{t.text}</span>
               </span>
             )}
+            {waited > 0 && <span className="todo-age mono">{waited}d</span>}
             <button className="todo-remove" title="Remove" onClick={() => change((l) => l.filter((x) => x.id !== t.id))}>
               <XIcon size={16} weight="bold" />
             </button>
           </li>
-        ))}
+          )
+        })}
         {!total && <li className="empty">Nothing for {DAYS[day]} yet.</li>}
       </ul>
 

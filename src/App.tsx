@@ -21,6 +21,7 @@ import { UpdateNotice } from './components/UpdateNotice'
 import { TodoMenu, type Scheduled } from './components/TodoMenu'
 import { CloudButton } from './components/CloudSync'
 import { useCloudSync } from './lib/useCloudSync'
+import { rollover } from './lib/rollover'
 import { useUpdater } from './lib/useUpdater'
 
 type DragKind =
@@ -78,8 +79,14 @@ function saveActivity(d: AppData, a: Activity): AppData {
 }
 
 export default function App() {
-  const { data, update, undo, redo, canUndo, canRedo, status, retrySave, folder, restoredFrom, applyRemote, updateSync } = useAppData()
+  const { data, update, undo, redo, canUndo, canRedo, status, retrySave, folder, restoredFrom, applyRemote, updateSync, updateSilently } = useAppData()
   const cloud = useCloudSync(data, applyRemote, updateSync)
+  const today = useToday()
+  // unticked to-dos from days gone by move on to today (on launch, at midnight, and on coming back to the app)
+  const loaded = !!data
+  useEffect(() => {
+    if (loaded) updateSilently((d) => rollover(d, today))
+  }, [loaded, today, data?.todos, updateSilently])
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [drag, setDrag] = useState<Drag | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -565,4 +572,21 @@ export default function App() {
       {confirming && <Confirm {...confirming} onClose={() => setConfirming(null)} />}
     </div>
   )
+}
+
+/** today's date (YYYY-MM-DD), kept current across midnight and while the app sleeps in the background */
+function useToday() {
+  const [today, setToday] = useState(() => toISO(new Date()))
+  useEffect(() => {
+    const check = () => setToday(toISO(new Date()))
+    const timer = setInterval(check, 60_000)
+    window.addEventListener('focus', check)
+    document.addEventListener('visibilitychange', check)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', check)
+      document.removeEventListener('visibilitychange', check)
+    }
+  }, [])
+  return today
 }

@@ -710,3 +710,16 @@ html { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
   /* a finger-sized grip at the bottom of each block */
   .resize-handle { height: 16px; bottom: -4px; }
 }
+
+/* to-dos that have been waiting 3+ days: a red glow every few seconds */
+.todo-age { flex-shrink: 0; align-self: center; font-size: 11px; opacity: 0.55; }
+.todo-item.stale .todo-age { color: var(--clash-ink); opacity: 1; font-weight: 700; }
+.todo-item.stale { animation: todo-nag 6s ease-in-out infinite; }
+@keyframes todo-nag {
+  0%, 70%, 100% { background: transparent; box-shadow: none; }
+  80% { background: var(--clash-tint); box-shadow: inset 0 0 0 2px var(--clash); }
+  90% { background: transparent; box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .todo-item.stale { animation: none; box-shadow: inset 3px 0 0 var(--clash); }
+}
