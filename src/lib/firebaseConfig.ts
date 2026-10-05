@@ -14,7 +14,14 @@ export interface FirebaseConfig {
   appId: string
 }
 
-export const FIREBASE_CONFIG: FirebaseConfig | null = null
+export const FIREBASE_CONFIG: FirebaseConfig | null = {
+  apiKey: 'AIzaSyD3pCpaMvO0JCurCD5G-F_Jm0S6twnQ8lQ',
+  authDomain: 'timetable-2d1f7.firebaseapp.com',
+  projectId: 'timetable-2d1f7',
+  storageBucket: 'timetable-2d1f7.firebasestorage.app',
+  messagingSenderId: '314113777321',
+  appId: '1:314113777321:web:262bbabdd89c407c6813b8',
+}
 
 export const USE_EMULATOR = import.meta.env.VITE_FIREBASE_EMULATOR === '1'
 
