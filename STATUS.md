@@ -358,3 +358,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   3. On iPad the block editor and template name no longer summon the keyboard by themselves (`autoFocus={!isIPad}`).
   Simulator note: it runs portrait with the app landscape, so system alerts/keyboard draw sideways; taps use the portrait
   frame. Screenshots lag one action.
+- **2026-10-06**: **Released v0.7.0** (to-do carry-over + red glow, per-item to-do sync, iPad fixes). The Release run triggered the TestFlight run automatically, which uploaded the fixed iPad build (build 2) with no errors.
