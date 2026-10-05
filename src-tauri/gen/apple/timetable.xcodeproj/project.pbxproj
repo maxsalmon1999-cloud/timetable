@@ -18,6 +18,7 @@
 		A99BB10FBD72C1B1FF068B75 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 81168A0AE318D371987FD457 /* Metal.framework */; };
 		B5DA3D8E96D3E7286AAA19C4 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B94C03F3DB9CB51695A72C57 /* MetalKit.framework */; };
 		C1577E8B1967D8F6C2EBFAE8 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = D7BE5E9D3EDC9D70788F9E2A /* assets */; };
+		E96413CCEE39499BA6B8FE52 /* EventKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A62B633F8DF2B6403C13E48 /* EventKit.framework */; };
 		FF51687EC8911079C6D5D223 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 762C3E91305BB5C92CDBEEE2 /* UIKit.framework */; };
 /* End PBXBuildFile section */
 
@@ -30,6 +31,7 @@
 		53CB849DAE389C35FE776633 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		6ABDF2A94B7CBB38315EB4C3 /* timetable_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = timetable_iOS.entitlements; sourceTree = "<group>"; };
 		762C3E91305BB5C92CDBEEE2 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		7A62B633F8DF2B6403C13E48 /* EventKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = EventKit.framework; path = System/Library/Frameworks/EventKit.framework; sourceTree = SDKROOT; };
 		81168A0AE318D371987FD457 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		832ECE8DA2E36233FDD89A08 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		A044D5BA781595DCCC9B003D /* timetable_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = timetable_iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -51,6 +53,7 @@
 			files = (
 				139DEA849AE0578ED96BD1BF /* libapp.a in Frameworks */,
 				0AC41E12C4394D683CCBA119 /* CoreGraphics.framework in Frameworks */,
+				E96413CCEE39499BA6B8FE52 /* EventKit.framework in Frameworks */,
 				A99BB10FBD72C1B1FF068B75 /* Metal.framework in Frameworks */,
 				B5DA3D8E96D3E7286AAA19C4 /* MetalKit.framework in Frameworks */,
 				3DB3C67127E544BA86A60EE6 /* QuartzCore.framework in Frameworks */,
@@ -136,6 +139,7 @@
 			isa = PBXGroup;
 			children = (
 				470A681943FF4FEB0454904C /* CoreGraphics.framework */,
+				7A62B633F8DF2B6403C13E48 /* EventKit.framework */,
 				1FA4FB7E082BDF66639341C1 /* libapp.a */,
 				81168A0AE318D371987FD457 /* Metal.framework */,
 				B94C03F3DB9CB51695A72C57 /* MetalKit.framework */,
@@ -152,6 +156,20 @@
 			children = (
 			);
 			path = Externals;
+			sourceTree = "<group>";
+		};
+		"TEMP_D2C97723-1226-433E-B437-D3570683BA89" /* x86_64 */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = x86_64;
+			sourceTree = "<group>";
+		};
+		"TEMP_E282BFA3-85B4-40F3-8194-98C47A266275" /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = arm64;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

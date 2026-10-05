@@ -4,8 +4,11 @@
 //   a:<id>        an activity (+ its position in the bank)
 //   b:<id>        a block
 //   t:<id>        a template
-//   w:<monday>    that week's to-do lists and ticks
+//   d:<monday>:<day>:<id>   one of her to-dos (+ its position in that day's list)
+//   k:<monday>:<id>         a tick on a timetable block / calendar event that week
 //   s:<monday>    "this week is synced with Apple Calendar"
+//   w:<monday>    (old: a whole week's to-dos in one doc; read and then replaced by d:/k: docs, because two devices
+//                 editing the same week while apart lost one side's changes)
 // Each device keeps `sync.base`: a fingerprint of every doc as of its last sync. Comparing this device, the cloud and
 // the base tells which side changed each doc (a three-way merge), so edits on different devices both survive and
 // only a doc edited on both sides since the last sync is decided, in this device's favour.
@@ -42,7 +45,9 @@ export function hash(s: string): string {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
 }
 
-const hasItems = (lists?: unknown[][]) => !!lists?.some((l) => l.length)
+/** doc ids can't contain '/', and calendar event ids might */
+const enc = encodeURIComponent
+const dec = decodeURIComponent
 
 /** the synced part of her plans, as docs */
 export function toDocs(d: AppData): Docs {
@@ -50,12 +55,9 @@ export function toDocs(d: AppData): Docs {
   d.activities.forEach((a, pos) => docs.set(`a:${a.id}`, stable({ ...a, pos })))
   for (const b of d.blocks) docs.set(`b:${b.id}`, stable(b))
   for (const t of d.templates) docs.set(`t:${t.id}`, stable(t))
-  const weeks = new Set([...Object.keys(d.todos ?? {}), ...Object.keys(d.todoTicks ?? {})])
-  for (const w of weeks) {
-    const lists = d.todos?.[w]
-    const ticks = d.todoTicks?.[w]
-    if (hasItems(lists) || ticks?.length) docs.set(`w:${w}`, stable({ lists: hasItems(lists) ? lists : undefined, ticks: ticks?.length ? [...ticks].sort() : undefined }))
-  }
+  for (const [w, lists] of Object.entries(d.todos ?? {}))
+    lists.forEach((list, day) => list.forEach((t, pos) => docs.set(`d:${w}:${day}:${enc(t.id)}`, stable({ ...t, pos }))))
+  for (const [w, ticks] of Object.entries(d.todoTicks ?? {})) for (const id of ticks) docs.set(`k:${w}:${enc(id)}`, '1')
   for (const w of d.syncedWeeks ?? []) docs.set(`s:${w}`, '1')
   return docs
 }
@@ -68,23 +70,34 @@ export function fromDocs(docs: Docs, local: AppData): AppData {
   const todos: Record<string, Todo[][]> = {}
   const todoTicks: Record<string, string[]> = {}
   const syncedWeeks: string[] = []
+  const legacyWeeks: [string, { lists?: Todo[][]; ticks?: string[] }][] = []
+  const items: Record<string, (Todo & { pos: number; day: number })[]> = {}
+  const tickSets: Record<string, Set<string>> = {}
   for (const [key, json] of docs) {
-    const at = key.indexOf(':')
-    const kind = key.slice(0, at)
-    const id = key.slice(at + 1)
-    if (kind === 's') {
-      syncedWeeks.push(id)
-      continue
-    }
-    const v = JSON.parse(json)
-    if (kind === 'a') activities.push(v)
-    else if (kind === 'b') blocks.push(v)
-    else if (kind === 't') templates.push(v)
-    else if (kind === 'w') {
-      if (v.lists) todos[id] = v.lists
-      if (v.ticks) todoTicks[id] = v.ticks
+    const parts = key.split(':')
+    const kind = parts[0]
+    if (kind === 's') syncedWeeks.push(parts[1])
+    else if (kind === 'k') (tickSets[parts[1]] ??= new Set()).add(dec(parts[2]))
+    else if (kind === 'd') (items[parts[1]] ??= []).push({ ...JSON.parse(json), day: Number(parts[2]) })
+    else if (kind === 'w') legacyWeeks.push([parts[1], JSON.parse(json)])
+    else {
+      const v = JSON.parse(json)
+      if (kind === 'a') activities.push(v)
+      else if (kind === 'b') blocks.push(v)
+      else if (kind === 't') templates.push(v)
     }
   }
+  // old whole-week docs: keep any to-do or tick the per-item docs don't already have
+  for (const [w, v] of legacyWeeks) {
+    const have = new Set((items[w] ?? []).map((t) => t.id))
+    v.lists?.forEach((list, day) => list.forEach((t, pos) => have.has(t.id) || (items[w] ??= []).push({ ...t, pos: 1000 + pos, day })))
+    for (const id of v.ticks ?? []) (tickSets[w] ??= new Set()).add(id)
+  }
+  for (const [w, list] of Object.entries(items)) {
+    list.sort((x, y) => x.pos - y.pos || (x.id < y.id ? -1 : 1))
+    todos[w] = Array.from({ length: 7 }, (_, day) => list.filter((t) => t.day === day).map(({ pos: _p, day: _d, ...t }) => t)) // eslint-disable-line @typescript-eslint/no-unused-vars
+  }
+  for (const [w, set] of Object.entries(tickSets)) todoTicks[w] = [...set].sort()
   activities.sort((x, y) => x.pos - y.pos || (x.id < y.id ? -1 : 1))
   // keep her local order of blocks/templates where possible, so nothing on screen jumps about
   const order = (ids: string[]) => {

@@ -416,7 +416,7 @@ export default function App() {
             </span>
             <input
               className="template-name"
-              autoFocus
+              autoFocus={!isIPad}
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && saveDraft()}

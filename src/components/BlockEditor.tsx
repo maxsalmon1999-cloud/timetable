@@ -8,6 +8,7 @@ import { overlaps, type DayEvent } from '../lib/calendar'
 import { ColorPicker, Modal } from './Modal'
 import { IconLibrary } from './IconLibrary'
 import { ActivityIcon } from './ActivityIcon'
+import { isIPad } from '../lib/tauri'
 
 // any time can be picked; the grid widens itself to show it
 const TIMES = Array.from({ length: (MAX_END - MIN_START) / SNAP + 1 }, (_, i) => MIN_START + i * SNAP)
@@ -90,7 +91,7 @@ export function BlockEditor({
           )}
           <label className="field">
             <span className="label">What</span>
-            <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Piano practice" />
+            <input autoFocus={!isIPad /* the iPad keyboard would cover half the editor; she usually picks a chip */} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Piano practice" />
           </label>
           <div className="field">
             <span className="label">Colour</span>

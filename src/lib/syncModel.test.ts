@@ -128,3 +128,54 @@ test('device-only fields (template draft) never leave the device', () => {
   const r = reconcile(d, new Map([['b:b9', JSON.stringify(blk('b9', 'Remote'))]]), {})
   assert.deepEqual(r.data.templateDraft, d.templateDraft)
 })
+
+test('to-dos added to the same week on both devices while apart are both kept', () => {
+  const cloud: Docs = new Map()
+  const week = '2026-10-05'
+  const empty = () => Array.from({ length: 7 }, () => [] as { id: string; text: string; done: boolean }[])
+  const mac = device(data({ todos: { [week]: [[{ id: 't0', text: 'Shared', done: false }], [], [], [], [], [], []] } }))
+  sync(mac, cloud)
+  const ipad = device(data())
+  sync(ipad, cloud)
+  // apart: each adds one to Monday, and the iPad ticks the shared one
+  const macLists = mac.data.todos![week].map((l) => [...l])
+  macLists[0].push({ id: 'm1', text: 'From Mac', done: false })
+  mac.data = { ...mac.data, todos: { [week]: macLists } }
+  const ipadLists = ipad.data.todos![week].map((l) => l.map((t) => (t.id === 't0' ? { ...t, done: true } : t)))
+  ipadLists[0].push({ id: 'p1', text: 'From iPad', done: false })
+  ipad.data = { ...ipad.data, todos: { [week]: ipadLists } }
+  sync(mac, cloud)
+  sync(ipad, cloud)
+  sync(mac, cloud)
+  const ids = (d: AppData) => (d.todos?.[week] ?? empty())[0].map((t) => `${t.id}${t.done ? '✓' : ''}`).sort()
+  assert.deepEqual(ids(mac.data), ['m1', 'p1', 't0✓'])
+  assert.deepEqual(ids(ipad.data), ['m1', 'p1', 't0✓'])
+})
+
+test('old whole-week to-do docs from v0.6.0 are read, then replaced by per-item docs without losing anything', () => {
+  const week = '2026-10-05'
+  const lists = [[{ id: 't1', text: 'Milk', done: false }], [], [{ id: 't2', text: 'Essay', done: true }], [], [], [], []]
+  const cloud: Docs = new Map([[`w:${week}`, JSON.stringify({ lists, ticks: ['b1'] })]])
+  // a device that synced with v0.6.0: same content locally, base knows the old doc
+  const mac = device(data({ todos: { [week]: lists }, todoTicks: { [week]: ['b1'] } }))
+  mac.base = { [`w:${week}`]: 'old' }
+  sync(mac, cloud)
+  assert.equal(cloud.has(`w:${week}`), false)
+  assert.deepEqual([...cloud.keys()].sort(), [`d:${week}:0:t1`, `d:${week}:2:t2`, `k:${week}:b1`])
+  // a fresh device that only ever saw the old doc gets everything
+  const fresh = device(data())
+  sync(fresh, new Map([[`w:${week}`, JSON.stringify({ lists, ticks: ['b1'] })]]))
+  assert.deepEqual(fresh.data.todos, { [week]: lists })
+  assert.deepEqual(fresh.data.todoTicks, { [week]: ['b1'] })
+})
+
+test('ticks on calendar events with slashes in their ids survive', () => {
+  const cloud: Docs = new Map()
+  const id = 'ABC/123:XYZ@1791200000000|2026-10-06'
+  const mac = device(data({ todoTicks: { '2026-10-05': [id] } }))
+  sync(mac, cloud)
+  assert.ok([...cloud.keys()].every((k) => !k.includes('/')))
+  const ipad = device(data())
+  sync(ipad, cloud)
+  assert.deepEqual(ipad.data.todoTicks, { '2026-10-05': [id] })
+})

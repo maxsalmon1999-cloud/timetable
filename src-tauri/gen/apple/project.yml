@@ -77,6 +77,8 @@ targets:
       - framework: libapp.a
         embed: false
       - sdk: CoreGraphics.framework
+      # Apple Calendar (src-tauri/src/calendar.rs); without it the first calendar call fails with "class EKEventStore could not be found"
+      - sdk: EventKit.framework
       - sdk: Metal.framework
       - sdk: MetalKit.framework
       - sdk: QuartzCore.framework

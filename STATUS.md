@@ -347,3 +347,14 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   focus (`lib/rollover.ts` + tests; store action `silent`, so no undo step; done in the data, so synced devices agree).
   Each keeps `since` (first day it was meant for); from 3 days waiting it shows "Nd" and pulses red every 6s (reduced motion:
   a static red edge). Only her own to-dos move; timetable/calendar items and ticked to-dos stay on their day.
+- **2026-10-06**: Test pass (browser at 1440×900 with a QA device, two-device sync on the emulator, iPad Pro 13" simulator).
+  All flows passed except three bugs, now fixed:
+  1. **Sync lost to-dos** when both devices edited the same week while apart (whole week was one doc). To-dos and ticks
+     are now one doc each (`d:<monday>:<day>:<id>`, `k:<monday>:<id>`, ids URI-encoded); old `w:` docs are read, merged by
+     id, and deleted. Tests cover the conflict, the migration and slash-containing calendar ids (17 tests).
+  2. **iPad calendar crashed** on its first call ("class EKEventStore could not be found"): EventKit wasn't linked into the
+     iOS app (a Rust staticlib's link directives don't reach Xcode). Added `EventKit.framework` to gen/apple/project.yml.
+     The first TestFlight build (run 37386358546, build 1) has this bug.
+  3. On iPad the block editor and template name no longer summon the keyboard by themselves (`autoFocus={!isIPad}`).
+  Simulator note: it runs portrait with the app landscape, so system alerts/keyboard draw sideways; taps use the portrait
+  frame. Screenshots lag one action.
