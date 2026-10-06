@@ -5,7 +5,9 @@ import { fmtDuration } from '../lib/dates'
 import { discIcon } from '../lib/icons'
 import { isMacApp } from '../lib/tauri'
 import { ActivityEditor } from './ActivityEditor'
-import { Confirm, Dots } from './Modal'
+import { Dots, Modal } from './Modal'
+import { SlideToConfirm } from './SlideToConfirm'
+import { PALETTE } from '../lib/icons'
 import { SaveIndicator } from './SaveIndicator'
 import { ActivityIcon } from './ActivityIcon'
 import type { SaveStatus } from '../lib/store'
@@ -105,12 +107,25 @@ export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus,
         />
       )}
       {deleting && (
-        <Confirm
-          title={`Remove “${deleting.name}”?`}
-          message="It comes off your activity list. Blocks already on your weeks stay where they are."
-          actions={[{ label: 'Remove', kind: 'danger', run: () => onDelete(deleting.id) }]}
-          onClose={() => setDeleting(null)}
-        />
+        <Modal title={`Remove “${deleting.name}”?`} color={PALETTE.coral} width={440} onClose={() => setDeleting(null)}>
+          <div className="modal-body">
+            <p className="modal-message">
+              It comes off your activities on the left. Blocks already on your weeks stay where they are, just without a type.
+            </p>
+            <SlideToConfirm
+              label="Slide to remove"
+              onConfirm={() => {
+                onDelete(deleting.id)
+                setDeleting(null)
+              }}
+            />
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setDeleting(null)}>
+                Keep it
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </aside>
   )

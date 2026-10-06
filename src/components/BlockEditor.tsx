@@ -170,7 +170,10 @@ export function BlockEditor({
           {title.trim() && !inBank && (
             <label className="check">
               <input type="checkbox" checked={addToBank} onChange={(e) => setAddToBank(e.target.checked)} />
-              Save “{title.trim()}” to my activities
+              <span>
+                Repeating activity?
+                <span className="check-hint">Adds “{title.trim()}” to your activities on the left, ready to drag in again</span>
+              </span>
             </label>
           )}
           <div className="modal-actions">

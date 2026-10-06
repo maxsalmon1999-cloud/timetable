@@ -369,3 +369,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   activity (350 ms, switches instantly between activities, 120 ms grace on leaving) or press and hold it (300 ms, any
   pointer) → `.grid-card.filtering` fades untagged/other blocks and calendar events, lifts matches, and the activity shows
   "N this week". Ignored while a drag is active. Browser-verified (migration, cases a/b, hover, hold, release). Not released.
+- **2026-10-06**: Activities are only added by the yellow + or the block editor's "Repeating activity?" checkbox (was "Save … to my activities"; off by default; drawing a block never adds one). Removing an activity is a coral pop-up with **slide to remove** (`SlideToConfirm`: drag the handle ≥92% across; early release springs back; → or End on the focused handle) and "Keep it". Browser-verified. Not released.
