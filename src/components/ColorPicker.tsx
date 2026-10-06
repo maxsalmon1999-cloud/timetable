@@ -49,7 +49,7 @@ export function ColorPicker({ value, onChange, colors }: { value: string; onChan
     <div className="color-picker">
       <div className="honeycomb" role="radiogroup" aria-label="Colour">
         {rows(colors).map((row, r) => (
-          <div key={r} className={'comb-row' + (row.length < 7 ? ' inset' : '')}>
+          <div key={r} className="comb-row">
             {row.map((c) => {
               const on = c.toUpperCase() === current
               return (

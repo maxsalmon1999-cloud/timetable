@@ -465,11 +465,11 @@ input:focus, select:focus { box-shadow: 0 0 0 4px var(--lilac); }
 .check input { width: 18px; height: 18px; accent-color: var(--grape); }
 
 /* colour honeycomb: pointy-top hexagons, rows 7 / 6 / 7, each short row nudged half a cell in */
-.color-picker { --hw: 34px; --hh: calc(var(--hw) * 1.1547); --gap: 4px; display: flex; flex-direction: column; gap: 10px; }
-.honeycomb { display: flex; flex-direction: column; padding-bottom: 2px; }
+.color-picker { --hw: 34px; --hh: calc(var(--hw) * 1.1547); --gap: 4px; --comb: calc(var(--hw) * 7 + var(--gap) * 6); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.honeycomb { display: flex; flex-direction: column; align-items: center; padding-bottom: 2px; }
 .comb-row { display: flex; gap: var(--gap); }
 .comb-row + .comb-row { margin-top: calc(var(--hh) * -0.25 + var(--gap) * 0.87); }
-.comb-row.inset { padding-left: calc((var(--hw) + var(--gap)) / 2); }
+/* rows are centred, so the 6-hexagon row sits half a cell in by itself */
 .hex {
   --clip: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   position: relative; width: var(--hw); height: var(--hh); flex-shrink: 0; padding: 0; border: none; cursor: pointer;
@@ -488,13 +488,13 @@ input:focus, select:focus { box-shadow: 0 0 0 4px var(--lilac); }
 span.hex { cursor: default; }
 span.hex:hover { transform: none; }
 span.hex.on { transform: none; }
-.hex-entry { display: flex; align-items: center; gap: 10px; }
+.hex-entry { display: flex; align-items: center; gap: 10px; width: 100%; max-width: calc(var(--comb) + 24px); }
 .hex-input { flex: 1; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; background: var(--white); border: 2px solid var(--ink); border-radius: var(--r-control); }
 .hex-input:focus-within { box-shadow: 0 0 0 4px var(--lilac); }
 .hex-input input { border: none; outline: none; background: none; height: 100%; width: 100%; padding: 0; font-size: 14px; text-transform: uppercase; box-shadow: none; }
 .hex-input input:focus { box-shadow: none; }
 .hex-input input::placeholder { text-transform: none; font-family: var(--font); }
-.hex-note { font-size: 12.5px; font-weight: 600; color: var(--clash-ink); }
+.hex-note { font-size: 12.5px; font-weight: 600; color: var(--clash-ink); text-align: center; }
 
 .pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .pill {
