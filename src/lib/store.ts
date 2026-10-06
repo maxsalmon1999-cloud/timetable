@@ -9,7 +9,7 @@ const HISTORY_LIMIT = 100
 
 function seed(): AppData {
   return {
-    version: 3,
+    version: 4,
     activities: SEED_ACTIVITIES.map((a) => ({ id: uid(), ...a })),
     blocks: [],
     templates: [],

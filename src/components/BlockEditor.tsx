@@ -35,6 +35,8 @@ export function BlockEditor({
   onClose: () => void
 }) {
   const [title, setTitle] = useState(block.title)
+  /** the block's type (an activity id), separate from its name */
+  const [tag, setTag] = useState(block.tag)
   const [color, setColor] = useState(block.color)
   const [chosenIcon, setChosenIcon] = useState(block.icon)
   // until an icon is picked (tile, library or activity chip), it follows a guess from the title
@@ -52,11 +54,25 @@ export function BlockEditor({
   const inBank = activities.some((a) => a.name.toLowerCase() === title.trim().toLowerCase())
   const clashing = clashes.filter((ev) => overlaps({ start, end }, ev))
 
+  const tagged = activities.find((a) => a.id === tag)
+  /** pick a type: its colour and icon come along; the name too, unless she's written her own */
+  const pickType = (a: Activity) => {
+    if (a.id === tag) return setTag(undefined) // tapping the chosen type again clears it
+    const ownName = title.trim() && title.trim().toLowerCase() !== (tagged?.name ?? '').trim().toLowerCase()
+    setTag(a.id)
+    if (!ownName) setTitle(a.name)
+    setColor(a.color)
+    setIcon(a.icon ?? guessIcon(a.name))
+    setIconWeight(a.iconWeight)
+  }
+
   const save = () => {
     if (!title.trim()) return
-    const { icon: _i, iconWeight: _w, ...rest } = block // eslint-disable-line @typescript-eslint/no-unused-vars
+    const { icon: _i, iconWeight: _w, tag: _t, ...rest } = block // eslint-disable-line @typescript-eslint/no-unused-vars
+    // a block named exactly like an activity, with no type picked, is that type
+    const finalTag = tag ?? activities.find((a) => a.name.trim().toLowerCase() === title.trim().toLowerCase())?.id
     onSave(
-      { ...rest, title: title.trim(), color, start, end: Math.max(end, start + SNAP), ...(icon ? { icon, iconWeight } : {}) },
+      { ...rest, title: title.trim(), color, start, end: Math.max(end, start + SNAP), ...(finalTag ? { tag: finalTag } : {}), ...(icon ? { icon, iconWeight } : {}) },
       addToBank && !inBank,
     )
   }
@@ -69,24 +85,25 @@ export function BlockEditor({
         <form className="modal-body" onSubmit={(e) => (e.preventDefault(), save())}>
           <div className="day-line">{day}</div>
           {activities.length > 0 && (
-            <div className="pills">
-              {activities.map((a) => (
-                <button
-                  type="button"
-                  key={a.id}
-                  className={'pill' + (a.name === title ? ' on' : '')}
-                  style={a.name === title ? { background: a.color } : undefined}
-                  onClick={() => {
-                    setTitle(a.name)
-                    setColor(a.color)
-                    setIcon(a.icon ?? guessIcon(a.name))
-                    setIconWeight(a.iconWeight)
-                  }}
-                >
-                  <ActivityIcon name={discIcon(a.icon, a.name)} weight={a.iconWeight} size={17} />
-                  {a.name}
-                </button>
-              ))}
+            <div className="field">
+              <span className="label">Type</span>
+              <div className="pills" role="radiogroup" aria-label="Type">
+                {activities.map((a) => (
+                  <button
+                    type="button"
+                    key={a.id}
+                    role="radio"
+                    aria-checked={a.id === tag}
+                    title={a.id === tag ? 'Tap again for no type' : `Make this a ${a.name} block`}
+                    className={'pill' + (a.id === tag ? ' on' : '')}
+                    style={a.id === tag ? { background: a.color } : undefined}
+                    onClick={() => pickType(a)}
+                  >
+                    <ActivityIcon name={discIcon(a.icon, a.name)} weight={a.iconWeight} size={17} />
+                    {a.name}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <label className="field">

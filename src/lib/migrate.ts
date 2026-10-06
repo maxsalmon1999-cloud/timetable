@@ -8,6 +8,7 @@ import { startOfWeek, toISO } from './dates'
  *   v1 → v2: saturated colours → pastel palette (icon fields are optional, nothing else changes)
  *   v2 → v3: fill missing icons, never overwriting one that's set. Activities: guessed from the name.
  *            Blocks: the icon of the activity with the same name if it has one, else guessed from the title.
+ *   v3 → v4: tag each block with the activity of the same name (case and spaces ignored); others stay untagged.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Raw = any
@@ -32,10 +33,19 @@ export function migrate(raw: Raw): AppData {
     })
   }
 
+  if (version < 4) {
+    const byName = new Map<string, string>(d.activities.map((a: Raw) => [key(a.name), a.id]))
+    d = mapAll(d, (x) => {
+      if (x.name !== undefined || x.tag) return x // an activity, or tagged already
+      const tag = byName.get(key(x.title))
+      return tag ? { ...x, tag } : x
+    })
+  }
+
   // unreleased dev builds kept one week-less to-do pad (Todo[][]); file it under the current week
   if (Array.isArray(d.todos)) d = { ...d, todos: { [toISO(startOfWeek(new Date()))]: d.todos } }
 
-  return { ...d, version: 3 } as AppData
+  return { ...d, version: 4 } as AppData
 }
 
 const key = (name: unknown) => String(name ?? '').trim().toLowerCase()

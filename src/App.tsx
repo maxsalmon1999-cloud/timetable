@@ -37,13 +37,17 @@ type Confirming = Omit<ComponentProps<typeof Confirm>, 'onClose'>
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-/** what a block carries over when copied (to/from activities and templates) */
-const look = (x: { title?: string; name?: string; color: string; icon?: string; iconWeight?: Block['iconWeight'] }) => ({
-  title: x.title ?? x.name ?? '',
-  color: x.color,
-  ...(x.icon ? { icon: x.icon } : {}),
-  ...(x.iconWeight ? { iconWeight: x.iconWeight } : {}),
-})
+/** what a block carries over when copied (to/from activities and templates); a block made from an activity is tagged with it */
+const look = (x: { id?: string; title?: string; name?: string; tag?: string; color: string; icon?: string; iconWeight?: Block['iconWeight'] }) => {
+  const tag = x.name !== undefined ? x.id : x.tag
+  return {
+    title: x.title ?? x.name ?? '',
+    color: x.color,
+    ...(tag ? { tag } : {}),
+    ...(x.icon ? { icon: x.icon } : {}),
+    ...(x.iconWeight ? { iconWeight: x.iconWeight } : {}),
+  }
+}
 
 const NEW_BLOCK_COLOR = PALETTE.sky
 
@@ -55,8 +59,8 @@ const withBlocks = (d: AppData, fn: (bs: Block[]) => Block[]): AppData =>
 const withoutDraft = ({ templateDraft: _, ...rest }: AppData): AppData => rest // eslint-disable-line @typescript-eslint/no-unused-vars
 
 /**
- * Save an activity. If its icon/style changed, blocks named after it (in weeks, templates and the draft) follow,
- * unless she gave that block a different icon by hand. One update → one undo step.
+ * Save an activity. If its icon/style changed, blocks tagged with it or named after it (in weeks, templates and the
+ * draft) follow, unless she gave that block a different icon by hand. One update → one undo step.
  */
 function saveActivity(d: AppData, a: Activity): AppData {
   const prev = d.activities.find((x) => x.id === a.id)
@@ -65,7 +69,7 @@ function saveActivity(d: AppData, a: Activity): AppData {
 
   const names = new Set([prev.name, a.name].map((n) => n.trim().toLowerCase()))
   const follow = <T extends Block | TemplateBlock>(b: T): T => {
-    if (!names.has(b.title.trim().toLowerCase())) return b
+    if (b.tag !== a.id && !names.has(b.title.trim().toLowerCase())) return b
     if (b.icon && b.icon !== prev.icon) return b // changed by hand: leave it
     const { icon: _i, iconWeight: _w, ...rest } = b // eslint-disable-line @typescript-eslint/no-unused-vars
     return { ...rest, ...(a.icon ? { icon: a.icon, iconWeight: a.iconWeight } : {}) } as T
@@ -90,6 +94,8 @@ export default function App() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [drag, setDrag] = useState<Drag | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
+  /** the activity type she's looking at (hover/hold in the sidebar) */
+  const [focusTag, setFocusTag] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<Confirming | null>(null)
   const [restoreNoticeSeen, setRestoreNoticeSeen] = useState(false)
   const [syncPromptDismissed, setSyncPromptDismissed] = useState<string | null>(null)
@@ -185,8 +191,12 @@ export default function App() {
     update((d) => {
       const next = withBlocks(d, (bs) => (bs.some((x) => x.id === b.id) ? bs.map((x) => (x.id === b.id ? b : x)) : [...bs, b]))
       if (!addToBank) return next
+      // a new activity is a new tag, and this block is its first
       const activity = { id: uid(), name: b.title, color: b.color, duration: b.end - b.start, ...(b.icon ? { icon: b.icon, iconWeight: b.iconWeight } : {}) }
-      return { ...next, activities: [...next.activities, activity] }
+      return {
+        ...withBlocks(next, (bs) => bs.map((x) => (x.id === b.id ? { ...x, tag: activity.id } : x))),
+        activities: [...next.activities, activity],
+      }
     })
 
   const deleteBlock = (id: string) => updateBlocks((bs) => bs.filter((b) => b.id !== id))
@@ -382,6 +392,8 @@ export default function App() {
     )
   if (!data) return <div className="loading" data-tauri-drag-region />
 
+  const weekCounts: Record<string, number> = {}
+  for (const b of weekBlocks) if (b.tag) weekCounts[b.tag] = (weekCounts[b.tag] ?? 0) + 1
   const isThisWeek = toISO(weekStart) === toISO(startOfWeek(new Date()))
   const showSyncPrompt =
     !inTemplate && isThisWeek && !synced && weekBlocks.length === 0 && syncPromptDismissed !== weekKey &&
@@ -401,6 +413,9 @@ export default function App() {
         folder={folder}
         onRetrySave={retrySave}
         version={updater.version}
+        focusTag={focusTag}
+        onFocusTag={setFocusTag}
+        weekCounts={weekCounts}
       >
         <UpdateNotice state={updater.state} canRestart={status.kind === 'saved'} onRestart={updater.restart} />
         <CloudButton cloud={cloud} />
@@ -513,6 +528,7 @@ export default function App() {
           onLater={() => setTarget({ bottom: MAX_END })}
           onHideBottom={() => setTarget({ bottom: DEFAULT_TARGETS.bottom })}
           hitTestRef={hitTestRef}
+          focusTag={drag?.active ? null : focusTag}
           onEmptyDown={(e, date, minute) => beginDrag(e, { kind: 'create', date, anchor: minute })}
           onBlockDown={(e, block, mode) => {
             const hit = hitTestRef.current?.(e.clientX, e.clientY)

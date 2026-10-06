@@ -360,3 +360,12 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   frame. Screenshots lag one action.
 - **2026-10-06**: **Released v0.7.0** (to-do carry-over + red glow, per-item to-do sync, iPad fixes). The Release run triggered the TestFlight run automatically, which uploaded the fixed iPad build (build 2) with no errors.
 - **2026-10-06**: TestFlight set up: internal group "Girlfriend" (automatic distribution) with Helena; builds 0.6.0.2 and 0.7.0.3 IN_BETA_TESTING. `scripts/testflight-status.mjs` + workflow "TestFlight status" reads builds/groups/testers/team from the App Store Connect API (read-only). Untested: Firebase sign-in inside the iPad app.
+- **2026-10-06**: Activity types (tags). Each activity is also a type; blocks and template blocks carry `tag` (activity id),
+  separate from the name. Dragging an activity tags the block; the block editor's chips are now a "Type" picker (picking sets
+  tag + colour + icon, and the name only if she hasn't written her own; tapping the chosen type again clears it); a block
+  named exactly like an activity with no type picked gets that type on save; "Add to activities" makes a new type and tags
+  the block. Data v4: migration tags existing blocks whose title matches an activity name. Templates / copy last week
+  carry tags (`look()`); changing an activity's icon updates blocks with its tag too. Filtering: rest the mouse on an
+  activity (350 ms, switches instantly between activities, 120 ms grace on leaving) or press and hold it (300 ms, any
+  pointer) → `.grid-card.filtering` fades untagged/other blocks and calendar events, lifts matches, and the activity shows
+  "N this week". Ignored while a drag is active. Browser-verified (migration, cases a/b, hover, hold, release). Not released.

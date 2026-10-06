@@ -16,7 +16,14 @@ export interface Activity extends Iconed {
   duration: number
 }
 
-export interface Block extends Iconed {
+/** Which activity a block belongs to (its "type"), kept apart from its name: a Friends block renamed "Lunch with Aoi"
+ * is still tagged Friends. Holding or hovering an activity in the sidebar shows only the blocks with its tag. */
+interface Tagged {
+  /** the activity's id; missing for blocks of no particular type (or whose activity was deleted, which reads the same) */
+  tag?: string
+}
+
+export interface Block extends Iconed, Tagged {
   id: string
   /** YYYY-MM-DD */
   date: string
@@ -28,7 +35,7 @@ export interface Block extends Iconed {
 }
 
 /** A block inside a template: tied to a weekday (0 = Monday) instead of a date */
-export interface TemplateBlock extends Iconed {
+export interface TemplateBlock extends Iconed, Tagged {
   day: number
   start: number
   end: number
@@ -52,8 +59,8 @@ export interface Todo {
 }
 
 export interface AppData {
-  /** 1 = original; 2 = pastel palette + icon fields; 3 = icons filled in from names (see lib/migrate.ts) */
-  version: 3
+  /** 1 = original; 2 = pastel palette + icon fields; 3 = icons filled in from names; 4 = blocks tagged with their activity (see lib/migrate.ts) */
+  version: 4
   activities: Activity[]
   blocks: Block[]
   templates: Template[]

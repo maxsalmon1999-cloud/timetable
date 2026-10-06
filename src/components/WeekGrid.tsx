@@ -48,6 +48,8 @@ interface Props {
   hitTestRef: RefObject<HitTest | null>
   onEmptyDown: (e: RPointerEvent, date: string, minute: number) => void
   onBlockDown: (e: RPointerEvent, block: Block, mode: 'move' | 'resize') => void
+  /** an activity she's holding or hovering in the sidebar: everything not tagged with it fades */
+  focusTag?: string | null
 }
 
 /**
@@ -92,7 +94,7 @@ export function WeekGrid(p: Props) {
   const hover = useHover()
 
   return (
-    <div className={"grid-card panel" + (p.blank ? " blank" : "")} onPointerDownCapture={hover.hide}>
+    <div className={"grid-card panel" + (p.blank ? " blank" : "") + (p.focusTag ? " filtering" : "")} onPointerDownCapture={hover.hide}>
       <div className="grid-head">
         <div />
         {dates.map((d) => {
@@ -198,6 +200,7 @@ export function WeekGrid(p: Props) {
                         block={b}
                         placed={place(b.id, b.start, b.end)}
                         conflicts={dayEvents.filter((ev) => overlaps(b, ev))}
+                        match={!!p.focusTag && b.tag === p.focusTag}
                         onDown={(e, mode) => p.onBlockDown(e, b, mode)}
                         hover={hover.on({ kind: 'block', id: b.id, day: i })}
                       />
@@ -326,6 +329,7 @@ function BlockView({
   placed,
   ghost,
   conflicts = [],
+  match,
   onDown,
   hover,
 }: {
@@ -333,6 +337,8 @@ function BlockView({
   placed: Placed
   ghost?: boolean
   conflicts?: DayEvent[]
+  /** tagged with the activity she's filtering by */
+  match?: boolean
   onDown?: (e: RPointerEvent, mode: 'move' | 'resize') => void
   hover?: HoverHandlers
 }) {
@@ -340,7 +346,7 @@ function BlockView({
   const title = block.title || 'Untitled'
   return (
     <div
-      className={`item block tier-${placed.tier}` + (ghost ? ' ghost' : '') + (clash ? ' conflict' : '')}
+      className={`item block tier-${placed.tier}` + (ghost ? ' ghost' : '') + (clash ? ' conflict' : '') + (match ? ' match' : '')}
       style={{ ...placed.style, ['--c' as string]: block.color }}
       {...hover}
       onPointerDown={(e) => {
