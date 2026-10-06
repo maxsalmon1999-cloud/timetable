@@ -58,3 +58,8 @@ const invites = await api(`userInvitations?limit=20`).catch((e) => ({ data: [], 
 console.log('\nPending App Store Connect invitations:')
 for (const i of invites.data) console.log(`  ${i.attributes.email}  roles=${i.attributes.roles}  expires=${i.attributes.expirationDate}`)
 if (!invites.data.length) console.log(invites.error ? `  (couldn't read: ${invites.error})` : '  (none, so everyone invited has accepted)')
+
+const users = await api(`users?limit=50`).catch((e) => ({ data: [], error: e.message }))
+console.log('\nApp Store Connect team members (internal testers must be one of these):')
+for (const u of users.data) console.log(`  ${u.attributes.firstName} ${u.attributes.lastName} <${u.attributes.username}>  roles=${u.attributes.roles}  allApps=${u.attributes.allAppsVisible}`)
+if (users.error) console.log(`  (couldn't read: ${users.error})`)
