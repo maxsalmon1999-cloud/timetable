@@ -359,3 +359,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   Simulator note: it runs portrait with the app landscape, so system alerts/keyboard draw sideways; taps use the portrait
   frame. Screenshots lag one action.
 - **2026-10-06**: **Released v0.7.0** (to-do carry-over + red glow, per-item to-do sync, iPad fixes). The Release run triggered the TestFlight run automatically, which uploaded the fixed iPad build (build 2) with no errors.
+- **2026-10-06**: TestFlight set up: internal group "Girlfriend" (automatic distribution) with Helena; builds 0.6.0.2 and 0.7.0.3 IN_BETA_TESTING. `scripts/testflight-status.mjs` + workflow "TestFlight status" reads builds/groups/testers/team from the App Store Connect API (read-only). Untested: Firebase sign-in inside the iPad app.
