@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { CheckIcon, XIcon } from '@phosphor-icons/react'
+import { XIcon } from '@phosphor-icons/react'
 import { PALETTE } from '../lib/icons'
 
 // open modals, newest last: Escape only closes the top one (e.g. icon library over the block editor)
@@ -56,27 +56,6 @@ export function Modal({
         </div>
         {children}
       </div>
-    </div>
-  )
-}
-
-export function ColorPicker({ value, onChange, colors, columns }: { value: string; onChange: (c: string) => void; colors: string[]; columns?: number }) {
-  const names = Object.fromEntries(Object.entries(PALETTE).map(([k, v]) => [v, k]))
-  return (
-    <div className="swatches" style={columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 34px)` } : undefined}>
-      {colors.map((c) => (
-        <button
-          key={c}
-          type="button"
-          className={'swatch' + (c.toLowerCase() === value.toLowerCase() ? ' selected' : '')}
-          style={{ background: c }}
-          onClick={() => onChange(c)}
-          title={names[c] ?? c}
-          aria-label={`Colour ${names[c] ?? c}`}
-        >
-          {c.toLowerCase() === value.toLowerCase() && <CheckIcon size={18} weight="bold" />}
-        </button>
-      ))}
     </div>
   )
 }

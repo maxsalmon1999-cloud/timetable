@@ -64,6 +64,9 @@ export const discIcon = (icon: string | undefined, name: string) => icon ?? gues
 export const PALETTE = {
   sky: '#A9D6FF', mint: '#A8E8BF', peach: '#FFC49E', pink: '#FFB8D6', lilac: '#CDB9FF',
   teal: '#8FE0D6', lemon: '#FFE680', sand: '#E8D3B5', coral: '#FF9A8A', cloud: '#E3E1EC',
+  // added 2026-10-06 (the honeycomb picker doubled the choice)
+  salmon: '#FFB3A1', apricot: '#FFD6A5', butter: '#FFF3B0', lime: '#D6F09A', sage: '#BFD9B0',
+  aqua: '#A0E9F5', periwinkle: '#B3BFFF', orchid: '#E2B8F2', rose: '#F7A1BE', stone: '#D6CFC4',
 } as const
 
 /** v1 → v2 colour migration (case-insensitive). Unknown colours are kept. */

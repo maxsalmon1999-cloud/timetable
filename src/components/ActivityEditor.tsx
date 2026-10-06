@@ -4,7 +4,8 @@ import type { Activity, IconWeight } from '../lib/types'
 import { COLORS, DURATIONS, uid } from '../lib/constants'
 import { discIcon, guessIcon, PALETTE } from '../lib/icons'
 import { fmtDuration, fmtTime } from '../lib/dates'
-import { ColorPicker, Modal } from './Modal'
+import { Modal } from './Modal'
+import { ColorPicker } from './ColorPicker'
 import { IconLibrary } from './IconLibrary'
 import { ActivityIcon } from './ActivityIcon'
 
@@ -63,7 +64,7 @@ export function ActivityEditor({
           </label>
           <div className="field">
             <span className="label">Colour</span>
-            <ColorPicker value={color} onChange={setColor} colors={COLORS} columns={5} />
+            <ColorPicker value={color} onChange={setColor} colors={COLORS} />
           </div>
           <label className="field">
             <span className="label">Usual length</span>
