@@ -38,7 +38,7 @@ for (const b of builds.data) {
   )
 }
 
-const groups = await api(`apps/${app.id}/betaGroups?include=builds,betaTesters&limit=20`)
+const groups = await api(`betaGroups?filter[app]=${app.id}&include=builds,betaTesters&limit=20`)
 console.log('\nTester groups:')
 if (!groups.data.length) console.log('  (none: create one under TestFlight → Internal Testing → +)')
 for (const g of groups.data) {
