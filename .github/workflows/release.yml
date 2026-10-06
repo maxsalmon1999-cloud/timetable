@@ -31,7 +31,8 @@ concurrency: release
 jobs:
   release:
     runs-on: macos-latest
-    timeout-minutes: 60
+    # Apple's notarisation usually takes minutes but has taken over 50; give it room (a cancelled run publishes nothing)
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v5
         with:
