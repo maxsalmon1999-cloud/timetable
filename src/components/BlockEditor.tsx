@@ -9,7 +9,7 @@ import { Modal } from './Modal'
 import { ColorPicker } from './ColorPicker'
 import { IconLibrary } from './IconLibrary'
 import { ActivityIcon } from './ActivityIcon'
-import { isIPad } from '../lib/tauri'
+import { isIOS } from '../lib/tauri'
 
 // any time can be picked; the grid widens itself to show it
 const TIMES = Array.from({ length: (MAX_END - MIN_START) / SNAP + 1 }, (_, i) => MIN_START + i * SNAP)
@@ -23,6 +23,7 @@ export function BlockEditor({
   onSave,
   onDelete,
   onClose,
+  phone,
 }: {
   block: Block
   isNew: boolean
@@ -34,6 +35,8 @@ export function BlockEditor({
   onSave: (b: Block, addToBank: boolean) => void
   onDelete: () => void
   onClose: () => void
+  /** the iPhone: times first, colour and icon folded away, and picking a type for a new block uses its usual length */
+  phone?: boolean
 }) {
   const [title, setTitle] = useState(block.title)
   /** the block's type (an activity id), separate from its name */
@@ -52,6 +55,7 @@ export function BlockEditor({
   const [end, setEnd] = useState(block.end)
   const [library, setLibrary] = useState(false)
   const [addToBank, setAddToBank] = useState(false)
+  const [looks, setLooks] = useState(!phone)
   const inBank = activities.some((a) => a.name.toLowerCase() === title.trim().toLowerCase())
   const clashing = clashes.filter((ev) => overlaps({ start, end }, ev))
 
@@ -65,6 +69,7 @@ export function BlockEditor({
     setColor(a.color)
     setIcon(a.icon ?? guessIcon(a.name))
     setIconWeight(a.iconWeight)
+    if (phone && isNew) setEnd(Math.min(MAX_END, start + a.duration))
   }
 
   const save = () => {
@@ -77,6 +82,64 @@ export function BlockEditor({
       addToBank && !inBank,
     )
   }
+
+  const looksFields = (
+    <>
+      <div className="field">
+        <span className="label">Colour</span>
+        <ColorPicker value={color} onChange={setColor} colors={COLORS} />
+      </div>
+      <div className="field">
+        <span className="label">Icon</span>
+        <div className="icon-quick">
+          {BASE_ICONS.map((n) => (
+            <button
+              type="button"
+              key={n}
+              title={n.replace(/-/g, ' ')}
+              className={'icon-tile small' + (n === icon ? ' on' : '')}
+              style={n === icon ? { background: color } : undefined}
+              onClick={() => setIcon(n === icon ? undefined : n)}
+            >
+              <ActivityIcon name={n} weight={iconWeight} size={24} />
+            </button>
+          ))}
+        </div>
+        <button type="button" className="pill dashed" onClick={() => setLibrary(true)}>
+          {icon && !(BASE_ICONS as readonly string[]).includes(icon) ? (
+            <ActivityIcon name={icon} weight={iconWeight} size={18} />
+          ) : (
+            <SquaresFourIcon size={18} weight="bold" />
+          )}
+          More icons…
+        </button>
+      </div>
+    </>
+  )
+  const times = (
+    <div className="field-row">
+      <label className="field">
+        <span className="label">From</span>
+        <select
+          className="mono"
+          value={start}
+          onChange={(e) => {
+            const s = Number(e.target.value)
+            setEnd(Math.min(MAX_END, s + (end - start)))
+            setStart(s)
+          }}
+        >
+          {TIMES.slice(0, -1).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}
+        </select>
+      </label>
+      <label className="field">
+        <span className="label">To</span>
+        <select className="mono" value={end} onChange={(e) => setEnd(Number(e.target.value))}>
+          {TIMES.filter((t) => t > start).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}
+        </select>
+      </label>
+    </div>
+  )
 
   const day = fromISO(block.date).toLocaleDateString('en-GB', weekdayOnly ? { weekday: 'long' } : { weekday: 'long', day: 'numeric', month: 'long' })
 
@@ -109,59 +172,19 @@ export function BlockEditor({
           )}
           <label className="field">
             <span className="label">What</span>
-            <input autoFocus={!isIPad /* the iPad keyboard would cover half the editor; she usually picks a chip */} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Piano practice" />
+            <input autoFocus={!isIOS /* the iPad/iPhone keyboard would cover half the editor; she usually picks a chip */} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Piano practice" />
           </label>
-          <div className="field">
-            <span className="label">Colour</span>
-            <ColorPicker value={color} onChange={setColor} colors={COLORS} />
-          </div>
-          <div className="field">
-            <span className="label">Icon</span>
-            <div className="icon-quick">
-              {BASE_ICONS.map((n) => (
-                <button
-                  type="button"
-                  key={n}
-                  title={n.replace(/-/g, ' ')}
-                  className={'icon-tile small' + (n === icon ? ' on' : '')}
-                  style={n === icon ? { background: color } : undefined}
-                  onClick={() => setIcon(n === icon ? undefined : n)}
-                >
-                  <ActivityIcon name={n} weight={iconWeight} size={24} />
-                </button>
-              ))}
-            </div>
-            <button type="button" className="pill dashed" onClick={() => setLibrary(true)}>
-              {icon && !(BASE_ICONS as readonly string[]).includes(icon) ? (
-                <ActivityIcon name={icon} weight={iconWeight} size={18} />
-              ) : (
-                <SquaresFourIcon size={18} weight="bold" />
-              )}
-              More icons…
+          {phone && times}
+          {looks ? (
+            looksFields
+          ) : (
+            <button type="button" className="pill dashed" onClick={() => setLooks(true)}>
+              <span className="looks-dot" style={{ background: color }} />
+              {icon && <ActivityIcon name={icon} weight={iconWeight} size={18} />}
+              Colour &amp; icon…
             </button>
-          </div>
-          <div className="field-row">
-            <label className="field">
-              <span className="label">From</span>
-              <select
-                className="mono"
-                value={start}
-                onChange={(e) => {
-                  const s = Number(e.target.value)
-                  setEnd(Math.min(MAX_END, s + (end - start)))
-                  setStart(s)
-                }}
-              >
-                {TIMES.slice(0, -1).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}
-              </select>
-            </label>
-            <label className="field">
-              <span className="label">To</span>
-              <select className="mono" value={end} onChange={(e) => setEnd(Number(e.target.value))}>
-                {TIMES.filter((t) => t > start).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}
-              </select>
-            </label>
-          </div>
+          )}
+          {!phone && times}
           {clashing.length > 0 && (
             <div className="clash-banner">
               <WarningIcon size={22} weight="bold" className="clash-icon" />
@@ -173,7 +196,9 @@ export function BlockEditor({
               <input type="checkbox" checked={addToBank} onChange={(e) => setAddToBank(e.target.checked)} />
               <span>
                 Repeating activity?
-                <span className="check-hint">Adds “{title.trim()}” to your activities on the left, ready to drag in again</span>
+                <span className="check-hint">
+                  {phone ? `Adds “${title.trim()}” to your types, ready to pick again` : `Adds “${title.trim()}” to your activities on the left, ready to drag in again`}
+                </span>
               </span>
             </label>
           )}

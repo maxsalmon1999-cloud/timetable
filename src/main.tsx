@@ -6,9 +6,11 @@ import '@fontsource/dm-mono/400.css'
 import '@fontsource/dm-mono/500.css'
 import './index.css'
 import App from './App.tsx'
+import PhoneApp from './PhoneApp.tsx'
+import { isPhone } from './lib/tauri'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {isPhone ? <PhoneApp /> : <App />}
   </StrictMode>,
 )

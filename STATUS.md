@@ -15,6 +15,7 @@ Core ideas:
 3. **Week templates**: save a "regular week" and apply it to upcoming weeks (replace or add), or build one from a
    blank week ("Create a template").
 4. **Apple Calendar integration** (read-only): per-week "Sync with Calendar"; events shown on the grid, clashes highlighted.
+5. **iPhone**: the same iOS app shows one day at a time (Day tab + To-do tab, ‹ › between days) instead of the week.
 
 ## Stack
 
@@ -41,7 +42,12 @@ Core ideas:
 
 ```
 src/
+  main.tsx                picks App (Mac/iPad week) or PhoneApp (iPhone day) by lib/tauri.ts isPhone
   App.tsx                 state wiring, ALL drag logic (bank→grid, move, resize, drag-to-create), templates, undo keys
+  PhoneApp.tsx            the iPhone: header (‹ day ›), strip (sync + calendar/sound), Day tab (DayView timeline) or
+                          To-do tab (TodoDay), + button, bottom tabs, block editor/event sheets, keyboard inset (--kb)
+  lib/plan.ts             data changes both screens make: setDayTodos, toggleTick, saveBlock, scheduledOn, countDay
+  lib/useToday.ts         today's ISO date, kept current across midnight / sleep
   lib/types.ts            Activity, Block, Template, TemplateBlock (all with optional icon/iconWeight), AppData (version: 2)
   lib/store.ts            useAppData(): load (→ migrate) / save + undo/redo history (reducer: past/present/future), student seed
   lib/migrate.ts          migrate(raw): bring any older saved file up to date (v1→v2 colours, v2→v3 icons). MUST open every old file
@@ -59,7 +65,9 @@ src/
                           clash rings, hitTest (pointer → {date, minute}) exposed via ref
   components/HoverCard.tsx      details card beside a hovered block / calendar event / all-day event (portal, fixed,
                                 pointer-events none). Hover state + lookup live in WeekGrid (useHover, HoverDetails)
-  components/TodoMenu.tsx       toolbar To-do button + the to-do pad that pops out under it (per-week, Mon–Sun tabs)
+  components/TodoMenu.tsx       toolbar To-do button + the to-do pad that pops out under it (per-week, Mon–Sun tabs);
+                                TodoDay = one day's list (meter, banner, rows, add, clear), also used by the iPhone
+  components/QuickAdd.tsx       iPhone: Fab (the + button) and the add-to-dos pop-up that sits on the keyboard
   components/ActivityIcon.tsx   renders an icon by name (or first-letter fallback in discs)
   components/IconLibrary.tsx    search + category pills + icon grid (activity editor, block editor "More icons…")
   components/Sidebar.tsx  activity bank + usage hints + save pill + version
@@ -200,6 +208,31 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - Browser-verified at 1440×900 and 1100×680 (per-week lists, nav keeps it open, old-shape migration, pulled-in blocks +
   sample events, ticks saved per week). Released in v0.4.0.
 
+### iPhone (2026-10-12)
+- **One iOS app for iPad and iPhone** (same bundle id, same TestFlight group): `TARGETED_DEVICE_FAMILY "1,2"` in
+  gen/apple/project.yml + project.pbxproj. iPad keeps landscape + no status bar (`~ipad` keys); iPhone is portrait only
+  with a dark status bar (Info.ios.plist, mirrored in gen/apple/timetable_iOS/Info.plist).
+- `isPhone` (lib/tauri.ts): the iOS app whose user agent says iPhone (iPads pretend to be Macs). `?phone=1` previews it
+  in the browser. `isIPad` is now false on iPhone; `isIOS` = either (no autofocus keyboards, Settings-app wording).
+- Screen: day name + date (lemon "Today" tag, or "Go to today"), ‹ › and sideways swipes (>70px, mostly horizontal) change
+  day; the new day slides in from that side. Left open overnight on today, it follows to the new today.
+  Strip under the header: cloud sync pill (sign-in) + **Day**: calendar pill (syncs the *week*, as on the Mac) / **To-do**: sound.
+- **Day tab**: scrolling timeline, 64px per hour, 9:00–22:00 widened for earlier/later items (visibleRange), all-day events
+  on top, lanes for overlaps, clash rings, now line. Opens scrolled to now (today) / the first item / the top.
+  Tap a block → block editor; tap an event → read-only details sheet; tap empty time → new 1h block there.
+  **+** = new 1h block at the next free half hour (from now today, 9:00 other days). No dragging on the phone: times
+  change in the editor (native iOS wheels). Deleting shows "Deleted … · Undo" for 5 s.
+- Block editor `phone` mode: times right after the name, colour + icon folded behind "Colour & icon…", picking a type for a
+  new block uses that activity's usual length.
+- **To-do tab**: `TodoDay` (same rows, ticks, rewards, carry-over glow as the Mac pad), no heading (the header has it).
+  **+** (mint) opens QuickAdd: a bottom pop-up with the keyboard up; Return adds and stays open for the next one, Return on
+  an empty line / Done / tap outside closes. Tab badge = unticked items that day.
+- Pop-ups are bottom sheets in `.phone-app`; `--kb` (visualViewport) lifts them above the keyboard.
+- Browser-verified at iPhone 13 (390×664) and iPhone SE sizes (add via + / tap, type pick, calendar sample events, clash,
+  event sheet, quick-add ×2, tick + rewards, swipe, delete + undo, no console errors). Mac to-do pad re-checked after the
+  TodoDay refactor. **Not yet run on a real iPhone or the simulator**: keyboard lift (--kb), autofocus bringing the keyboard
+  up, swipe feel, safe areas, status bar.
+
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
   so editing or deleting an activity never changes existing blocks.
@@ -234,7 +267,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   the inline icon. Tiny content shrinks to the box and hides below 9px (30m at 1100×680); the hover card always has it. At her ~1450×820 window 1h ≈ 41px (short), 30m tiny,
   1½h medium, 2h+ tall. A browser check found no text touching a border at 1450×820, 1440×900, 1100×680.
 
-## Current status (2026-09-28)
+## Current status (2026-10-12)
 
 **Working prototype, verified in browser (Chromium pane):**
 - [x] Week navigation (Today / ‹ ›), today highlight, current-time line
@@ -264,12 +297,16 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - [x] Hover card on blocks/events (browser-verified at 1450×820 and 1100×680: delay, instant swap, hide on leave/press/drag,
       Sunday flips left, template weekday). Calendar location/notes: Rust type-checked for aarch64-apple-darwin, **not yet
       seen with real EventKit data**. Released in v0.3.1.
+- [x] iPhone day view (Day + To-do tabs, ‹ › / swipe, + to add) in the universal iOS app. Browser-verified; **not yet on a
+      device/simulator or TestFlight**.
 - [x] Apple Calendar: sync button + current-week prompt, live refresh, all-day row, conflict highlighting (UI verified in
       browser with sample events; native EventKit build compiles/signs; real-calendar read awaiting Max clicking Allow)
 
 ## Roadmap / ideas (rough priority)
 
 1. Hand-test the native app (drag feel in WKWebView, reopen app → data still there). Get her feedback.
+   iPhone: run in the simulator (`npx tauri ios build --debug --target aarch64-sim`, iPhone device), check keyboard lift,
+   swipe, safe areas; then a TestFlight build (Actions → TestFlight) for her iPhone. Firebase sign-in on iOS still untested.
 2. Get it onto her Mac: install the latest `Timetable.dmg` (link above); unsigned, so right-click → Open the first time.
    Proper fix: Apple Developer ID signing + notarisation (paid Apple developer account); would also stop permission re-prompts.
 3. Calendar follow-ups if she wants them: choose which calendars to show, "stop syncing this week",
@@ -373,3 +410,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-10-06**: Colour picker is a honeycomb (`components/ColorPicker.tsx`, pointy-top hexagons in rows 7/6/7) of 20 colours (10 new in PALETTE: salmon, apricot, butter, lime, sage, aqua, periwinkle, orchid, rose, stone), ordered round the colour wheel in `COLORS`. Below it a hex box takes 3- or 6-digit codes with or without # and uses them as soon as valid; a custom colour shows in the hexagon beside it; dark colours (luminance < 0.25) get a warning. Browser-verified in both editors. Not released.
 - **2026-10-06**: Release timeout raised 60 → 180 min: v0.8.0's notarisation passed 54 min and the job was cancelled (nothing published).
 - **2026-10-07**: **Released v0.8.0** (activity types, slide to remove, honeycomb colour picker) after two failed runs on Apple's side (notarisation over 54 min, then a missing codesign timestamp on the dmg); the retry passed. TestFlight build uploaded.
+- **2026-10-12**: iPhone version: the iOS app is now universal (iPad + iPhone, one TestFlight build). On iPhone it shows
+  one day at a time: a Day tab (that day's timetable, tap to add/edit, + for the next free slot) and a To-do tab (that day's
+  list with the Mac's rewards, + opens a quick-add pop-up on the keyboard); ‹ › or swipe between days. Shared logic moved to
+  lib/plan.ts, TodoDay split out of the to-do pad. Not released; not yet run on a device.

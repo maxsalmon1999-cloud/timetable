@@ -774,3 +774,122 @@ html { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 }
 .slide-confirm-handle.dragging { transition: none; cursor: grabbing; }
 .slide-confirm-handle:focus-visible { outline: 3px solid var(--lilac); outline-offset: 2px; }
+
+/* one day of the to-do pad (TodoDay): fills the pad under the tabs, or the phone's To-do tab */
+.todo-daypane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ---------- iPhone: one day at a time (PhoneApp.tsx) ---------- */
+.phone-app {
+  height: 100%; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+.phone-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 10px; padding: 12px 16px 6px; }
+.phone-title { text-align: center; min-width: 0; }
+.phone-title h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.015em; line-height: 1.1; }
+.phone-date { display: flex; flex-wrap: nowrap; white-space: nowrap; justify-content: center; align-items: center; gap: 4px 8px; margin-top: 3px; font-size: 15px; font-weight: 600; }
+.phone-today-tag, .phone-today-btn { border: 2px solid var(--ink); border-radius: var(--r-pill); padding: 1px 9px; font: 800 12px var(--font); color: var(--ink); }
+.phone-today-tag { background: var(--lemon); }
+.phone-today-btn { background: var(--paper); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.phone-today-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.phone-strip { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px 8px; }
+.phone-strip-gap { flex: 1; }
+.phone-strip .save-pill { height: 34px; padding: 0 12px 0 9px; font-size: 14px; cursor: pointer; }
+.save-pill.phone-cal { background: var(--paper); }
+.save-pill.phone-cal.on { background: var(--sky); }
+.save-pill.phone-cal.bad { background: var(--coral); }
+.phone-strip .btn.square { width: 40px; height: 40px; }
+
+/* the card the day lives in; sideways swipes are ours (days), up and down scrolls */
+.phone-body {
+  flex: 1; min-height: 0; position: relative; margin: 0 14px; overflow: hidden; touch-action: pan-y;
+  background: var(--paper); border: var(--bw) solid var(--ink); border-radius: var(--r-panel); box-shadow: var(--sh-panel);
+}
+.phone-page { height: 100%; display: flex; flex-direction: column; }
+.phone-page.from-right { animation: page-in-right 0.22s ease-out; }
+.phone-page.from-left { animation: page-in-left 0.22s ease-out; }
+@keyframes page-in-right { from { opacity: 0; transform: translateX(28px); } }
+@keyframes page-in-left { from { opacity: 0; transform: translateX(-28px); } }
+
+/* Day tab */
+.day-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 96px; }
+.day-allday { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 10px; border-bottom: 2px dashed var(--line-dash); }
+.day-allday .allday-event { max-width: 100%; font-size: 14px; padding: 4px 12px; color: var(--ink); cursor: pointer; }
+.day-grid { position: relative; display: flex; margin-top: 14px; }
+.day-gutter { position: relative; width: 56px; flex-shrink: 0; }
+.day-col { position: relative; flex: 1; min-width: 0; margin-right: 12px; border-left: 1.5px solid var(--line-day); }
+.day-item { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 4px 9px; text-align: left; font: inherit; cursor: pointer; }
+.day-item .item-line { font-size: 14px; gap: 6px; }
+.day-item .item-title-row { font-size: 15px; gap: 6px; }
+.day-item .item-time { font-size: 12.5px; margin-top: 2px; }
+.day-item.block:active { transform: translate(2px, 2px); box-shadow: var(--sh-press); }
+.day-empty { padding: 18px 24px 0; text-align: center; font-size: 15px; opacity: 0.6; }
+
+/* the + button over the list */
+.fab {
+  position: absolute; right: 14px; bottom: 14px; z-index: 6; width: 62px; height: 62px; display: grid; place-items: center;
+  padding: 0; color: var(--ink); background: var(--grape); border: var(--bw) solid var(--ink); border-radius: 20px;
+  box-shadow: 4px 4px 0 var(--ink); cursor: pointer; transition: transform 0.06s, box-shadow 0.06s;
+}
+.fab.mint { background: var(--mint); }
+.fab:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+
+/* To-do tab */
+.phone-todo { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.phone-todo .todo-day { padding: 14px 18px 4px; }
+.phone-todo .todo-meter { padding: 6px 16px 10px; }
+.phone-todo .todo-banner { margin-top: 14px; }
+.phone-todo .todo-list { padding: 6px 12px 90px; gap: 6px; }
+.phone-todo .todo-list .empty { padding: 12px 6px; font-size: 15px; }
+.phone-todo .todo-text { font-size: 17px; }
+.phone-todo .todo-time { font-size: 13.5px; }
+.phone-todo .todo-remove { opacity: 0.45; width: 36px; height: 36px; }
+.phone-todo .todo-foot { padding: 0 12px 0; border-top: none; }
+.phone-todo .todo-foot > .btn { position: absolute; left: 14px; bottom: 26px; z-index: 6; background: var(--paper); }
+
+/* bottom tabs */
+.phone-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); }
+.phone-tabs button {
+  height: 54px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink); cursor: pointer;
+  background: var(--paper); border: var(--bw) solid var(--ink); border-radius: var(--r-control); box-shadow: var(--sh-control);
+  font: 800 17px var(--font); transition: transform 0.06s, box-shadow 0.06s;
+}
+.phone-tabs button.on { background: var(--grape); transform: translate(2px, 2px); box-shadow: var(--sh-press); }
+
+/* "Deleted … · Undo" */
+.phone-toast {
+  position: fixed; z-index: 50; left: 16px; right: 16px; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 76px);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 16px;
+  background: var(--ink); color: var(--paper); border-radius: var(--r-control); font-weight: 700; font-size: 15px;
+  animation: page-in-up 0.2s ease-out;
+}
+.phone-toast span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes page-in-up { from { opacity: 0; transform: translateY(16px); } }
+
+/* pop-ups are sheets from the bottom, sitting on the keyboard when it's up (--kb, set in PhoneApp.tsx) */
+.phone-app .modal-backdrop { place-items: end stretch; bottom: var(--kb, 0px); }
+.phone-app .modal {
+  width: 100% !important; max-width: 100%; max-height: calc(100% - env(safe-area-inset-top) - 16px);
+  border-radius: var(--r-panel) var(--r-panel) 0 0; border-bottom: none; box-shadow: none;
+  padding-bottom: max(0px, calc(env(safe-area-inset-bottom) - var(--kb, 0px)));
+  animation: page-in-up 0.2s ease-out;
+}
+.phone-app .modal-body { padding: 16px 16px 18px; }
+.phone-app .modal-actions { flex-wrap: wrap; }
+.phone-app .panel-head h2 { font-size: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.looks-dot { width: 18px; height: 18px; flex-shrink: 0; border: 2px solid var(--ink); border-radius: 50%; }
+.quick-add { padding: 14px 16px 16px; gap: 12px; }
+.quick-add-head { display: flex; align-items: center; gap: 10px; }
+.quick-add-head b { flex: 1; min-width: 0; font-size: 19px; font-weight: 800; }
+.quick-add-count { font-size: 13px; opacity: 0.65; }
+.quick-add .todo-add input { height: 50px; font-size: 17px; }
+.quick-add .todo-add .btn { width: 50px; height: 50px; }
+.event-sheet .hover-row { gap: 10px; font-size: 15px; line-height: 1.4; }
+.event-sheet .hover-row svg { margin-top: 2px; }
+.event-notes { white-space: pre-line; overflow-wrap: anywhere; }
+.event-sheet .hover-foot { font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .phone-page.from-right, .phone-page.from-left, .phone-toast, .phone-app .modal { animation: none; }
+}
+/* the week grid keeps every touch on a block for dragging; the phone's day scrolls instead (blocks are only tapped) */
+.phone-app .item { touch-action: pan-y; }

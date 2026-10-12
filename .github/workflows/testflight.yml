@@ -1,4 +1,5 @@
-# Builds the iPad app on one of GitHub's Macs and uploads it to TestFlight, where her iPad picks it up.
+# Builds the iOS app (one app for iPad and iPhone) on one of GitHub's Macs and uploads it to TestFlight, where her
+# iPad and iPhone pick it up.
 #
 # Runs after every successful Mac Release (same code, same version), once a month so her TestFlight build never
 # reaches its 90-day expiry, and by hand: GitHub → Actions → TestFlight → Run workflow.
@@ -42,7 +43,7 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Rust for iPad
+      - name: Rust for iOS
         run: |
           rustup update stable
           rustup default stable

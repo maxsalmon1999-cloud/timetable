@@ -110,8 +110,8 @@ function SyncModal({ cloud, onClose }: { cloud: Cloud; onClose: () => void }) {
         ) : (
           <form onSubmit={(e) => submit(e)} className="sync-form">
             <p className="modal-message">
-              Sign in with the same account on your Mac and your iPad to see the same plans on both. Your plans stay saved on this
-              device as well.
+              Sign in with the same account on your Mac, iPad and iPhone to see the same plans on all of them. Your plans stay
+              saved on this device as well.
             </p>
             <label className="field">
               <span className="label">Email</span>

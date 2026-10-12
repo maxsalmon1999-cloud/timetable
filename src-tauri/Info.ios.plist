@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Merged into the iPad app's Info.plist by Tauri (the Mac app uses Info.plist next to this file). -->
+<!-- Merged into the iOS app's Info.plist by Tauri (the Mac app uses Info.plist next to this file). One app for iPad and iPhone. -->
 <plist version="1.0">
 <dict>
-	<!-- iPadOS asks these when she taps Sync with Calendar; without them the app is closed on the spot -->
+	<!-- iOS asks these when she taps Sync with Calendar; without them the app is closed on the spot -->
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Timetable shows your calendar events on your week so you can plan around them. It never changes your calendar.</string>
 	<key>NSCalendarsUsageDescription</key>
@@ -13,7 +13,7 @@
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
-	<!-- landscape only, full screen (no Split View), no status bar -->
+	<!-- iPad: landscape only, full screen (no Split View), no status bar -->
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
@@ -21,8 +21,17 @@
 	</array>
 	<key>UIRequiresFullScreen</key>
 	<true/>
-	<key>UIStatusBarHidden</key>
+	<key>UIStatusBarHidden~ipad</key>
 	<true/>
+	<!-- iPhone: upright only (src/PhoneApp.tsx), with the clock and battery showing, in dark text -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIStatusBarHidden</key>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDarkContent</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>

@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type PointerEvent as RPointerEvent } from 'react'
 import { useAppData } from './lib/store'
 import type { Activity, AppData, Block, Template, TemplateBlock, Todo } from './lib/types'
+import { saveBlock as saveBlockIn, scheduledOn, setDayTodos, toggleTick as toggleTickIn, type Scheduled } from './lib/plan'
+import { useToday } from './lib/useToday'
 import { MAX_END, MIN_START, SNAP, snap, uid } from './lib/constants'
-import { addDays, fmtTime, fromISO, startOfWeek, monthLabel, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
+import { addDays, fmtTime, startOfWeek, monthLabel, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
 import { WeekGrid, type HitTest, type Preview } from './components/WeekGrid'
 import { Sidebar } from './components/Sidebar'
 import { BlockEditor } from './components/BlockEditor'
 import { TemplatesMenu } from './components/TemplatesMenu'
 import { Confirm } from './components/Modal'
 import { revealDataFolder } from './lib/storage'
-import { isIPad } from './lib/tauri'
+import { isIOS } from './lib/tauri'
 import { accessStatus, eventsForDay, openPrivacySettings, requestAccess } from './lib/calendar'
 import { DEFAULT_TARGETS, visibleRange, type RangeTargets } from './lib/dayRange'
 import { discIcon, PALETTE } from './lib/icons'
@@ -18,7 +20,7 @@ import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon, Che
 import { useCalendarSync } from './lib/useCalendarSync'
 import { SyncButton } from './components/SyncButton'
 import { UpdateNotice } from './components/UpdateNotice'
-import { TodoMenu, type Scheduled } from './components/TodoMenu'
+import { TodoMenu } from './components/TodoMenu'
 import { CloudButton } from './components/CloudSync'
 import { useCloudSync } from './lib/useCloudSync'
 import { rollover } from './lib/rollover'
@@ -124,17 +126,7 @@ export default function App() {
   const dayEvents = useMemo(() => dates.map((d) => eventsForDay(cal.events, d)), [dates, cal.events])
   // what the to-do pad pulls in for each day: her blocks + calendar events that start that day (not all-day ones)
   const scheduled = useMemo<Scheduled[][]>(
-    () =>
-      dates.map((date, i) =>
-        [
-          ...weekBlocks
-            .filter((b) => b.date === date)
-            .map((b): Scheduled => ({ id: b.id, kind: 'block', title: b.title, start: b.start, color: b.color, icon: b.icon, iconWeight: b.iconWeight })),
-          ...dayEvents[i].timed
-            .filter((e) => e.source.start >= fromISO(date).getTime()) // not the continuation of last night's event
-            .map((e): Scheduled => ({ id: e.id, kind: 'event', title: e.title, start: e.start, color: e.color, calendar: e.calendar })),
-        ].sort((a, b) => a.start - b.start),
-      ),
+    () => dates.map((date, i) => scheduledOn(date, weekBlocks, dayEvents[i].timed)),
     [dates, weekBlocks, dayEvents],
   )
   const range = useMemo(
@@ -152,7 +144,7 @@ export default function App() {
         message:
           'To show your Apple Calendar events here, open System Settings → Privacy & Security → Calendars, switch Timetable on (Full Access), then press Sync again.',
         cancelLabel: 'Close',
-        ...(isIPad
+        ...(isIOS
           ? {
               message:
                 'To show your calendar events here, open the Settings app, tap Apps → Timetable → Calendars, choose Full Access, then press Sync again.',
@@ -170,34 +162,12 @@ export default function App() {
   // ---------- data operations ----------
   const updateBlocks = (fn: (bs: Block[]) => Block[]) => update((d) => withBlocks(d, fn))
   /** tick / untick a pulled-in block or calendar event in the week on screen (one undo step) */
-  const toggleTick = (id: string) =>
-    update((d) => {
-      const now = d.todoTicks?.[weekKey] ?? []
-      const next = now.includes(id) ? now.filter((x) => x !== id) : [...now, id]
-      const { [weekKey]: _, ...others } = d.todoTicks ?? {} // eslint-disable-line @typescript-eslint/no-unused-vars
-      return { ...d, todoTicks: next.length ? { ...others, [weekKey]: next } : others }
-    })
+  const toggleTick = (id: string) => update((d) => toggleTickIn(d, weekKey, id))
 
   /** change one day's to-do list in the week on screen (one undo step) */
-  const updateTodos = (day: number, fn: (list: Todo[]) => Todo[]) =>
-    update((d) => {
-      const lists = Array.from({ length: 7 }, (_, i) => d.todos?.[weekKey]?.[i] ?? [])
-      lists[day] = fn(lists[day])
-      const { [weekKey]: _, ...others } = d.todos ?? {} // eslint-disable-line @typescript-eslint/no-unused-vars
-      return { ...d, todos: lists.some((l) => l.length) ? { ...others, [weekKey]: lists } : others }
-    })
+  const updateTodos = (day: number, fn: (list: Todo[]) => Todo[]) => update((d) => setDayTodos(d, weekKey, day, fn))
 
-  const saveBlock = (b: Block, addToBank: boolean) =>
-    update((d) => {
-      const next = withBlocks(d, (bs) => (bs.some((x) => x.id === b.id) ? bs.map((x) => (x.id === b.id ? b : x)) : [...bs, b]))
-      if (!addToBank) return next
-      // a new activity is a new tag, and this block is its first
-      const activity = { id: uid(), name: b.title, color: b.color, duration: b.end - b.start, ...(b.icon ? { icon: b.icon, iconWeight: b.iconWeight } : {}) }
-      return {
-        ...withBlocks(next, (bs) => bs.map((x) => (x.id === b.id ? { ...x, tag: activity.id } : x))),
-        activities: [...next.activities, activity],
-      }
-    })
+  const saveBlock = (b: Block, addToBank: boolean) => update((d) => saveBlockIn(d, b, addToBank, withBlocks))
 
   const deleteBlock = (id: string) => updateBlocks((bs) => bs.filter((b) => b.id !== id))
 
@@ -431,7 +401,7 @@ export default function App() {
             </span>
             <input
               className="template-name"
-              autoFocus={!isIPad}
+              autoFocus={!isIOS}
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && saveDraft()}
@@ -588,21 +558,4 @@ export default function App() {
       {confirming && <Confirm {...confirming} onClose={() => setConfirming(null)} />}
     </div>
   )
-}
-
-/** today's date (YYYY-MM-DD), kept current across midnight and while the app sleeps in the background */
-function useToday() {
-  const [today, setToday] = useState(() => toISO(new Date()))
-  useEffect(() => {
-    const check = () => setToday(toISO(new Date()))
-    const timer = setInterval(check, 60_000)
-    window.addEventListener('focus', check)
-    document.addEventListener('visibilitychange', check)
-    return () => {
-      clearInterval(timer)
-      window.removeEventListener('focus', check)
-      document.removeEventListener('visibilitychange', check)
-    }
-  }, [])
-  return today
 }
