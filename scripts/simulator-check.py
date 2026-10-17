@@ -68,26 +68,16 @@ def seed(udid):
 
 
 def shot(udid, name):
+    """simulator screenshots can show the frame before the last action, so the first one is thrown away"""
     time.sleep(1.5)
+    run("xcrun", "simctl", "io", udid, "screenshot", os.path.join(OUT, name + ".png"))
+    time.sleep(1)
     run("xcrun", "simctl", "io", udid, "screenshot", os.path.join(OUT, name + ".png"))
 
 
-def grab(udid):
-    path = os.path.join(OUT, ".probe.png")
-    run("xcrun", "simctl", "io", udid, "screenshot", path)
-    with open(path, "rb") as f:
-        return f.read()
-
-
-def tap(udid, x, y, expect_change=False):
-    """with expect_change, tap again (once) if the screen didn't change: simulated taps are sometimes dropped"""
-    before = grab(udid) if expect_change else None
+def tap(udid, x, y):
     idb("ui", "tap", "--udid", udid, str(round(x)), str(round(y)))
-    time.sleep(1.5)
-    if expect_change and grab(udid) == before:
-        print(f"RETAP: nothing changed after tapping ({round(x)}, {round(y)})", flush=True)
-        idb("ui", "tap", "--udid", udid, str(round(x)), str(round(y)))
-        time.sleep(1.5)
+    time.sleep(2.5)
 
 
 def swipe(udid, x1, y1, x2, y2):
@@ -123,13 +113,13 @@ w, h = screen(phone)
 fab = (w - 59, h - 145)  # the + over the list
 day_tab, todo_tab = (w * 0.26, h - 61), (w * 0.74, h - 61)
 shot(phone, "phone-01-day")
-tap(phone, *fab, expect_change=True)  # Day tab + → new block
+tap(phone, *fab)  # Day tab + → new block
 shot(phone, "phone-02-new-block")
-tap(phone, w - 40, 120, expect_change=True)  # outside the sheet, over the next-day button: closes, must not change the day
+tap(phone, w - 40, 120)  # outside the sheet, over the next-day button: closes, must not change the day
 shot(phone, "phone-03-closed-same-day")
-tap(phone, *todo_tab, expect_change=True)
+tap(phone, *todo_tab)
 shot(phone, "phone-04-todo")
-tap(phone, *fab, expect_change=True)  # To-do tab + → pop-up with the keyboard
+tap(phone, *fab)  # To-do tab + → pop-up with the keyboard
 shot(phone, "phone-05-quick-add-keyboard")
 idb("ui", "text", "--udid", phone, "Read chapter 3")
 idb("ui", "key", "--udid", phone, "40")  # Return: adds, stays open
@@ -138,7 +128,7 @@ idb("ui", "key", "--udid", phone, "40")  # Return on an empty line: closes
 shot(phone, "phone-07-closed")
 swipe(phone, w * 0.85, h * 0.5, w * 0.1, h * 0.5 + 10)  # → next day
 shot(phone, "phone-08-swiped-next-day")
-tap(phone, *day_tab, expect_change=True)
+tap(phone, *day_tab)
 shot(phone, "phone-09-next-day-timetable")
 swipe(phone, w * 0.1, h * 0.5, w * 0.85, h * 0.5 + 10)  # ← back
 shot(phone, "phone-10-swiped-back")
