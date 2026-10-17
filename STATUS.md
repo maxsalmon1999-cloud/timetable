@@ -241,7 +241,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   blocked), so the workflow also force-pushes shrunk screenshots to the `simulator-screenshots` branch.
 - Simulator-verified 2026-10-17 (iPhone 17, iOS 26): launch, safe areas/status bar, Day view, block editor sheet,
   backdrop close stays on the day, To-do + brings the keyboard up by itself with the pop-up sitting on it, Return adds,
-  iPad still shows the week.
+  iPad still shows the week. **Not confirmed in the simulator**: swipes and the keyboard staying up after Return (the
+  simulator's taps and screenshots on GitHub's Macs are unreliable: dropped taps, screenshots several actions behind).
 - Browser-verified at iPhone 13 (390×664) and iPhone SE sizes (add via + / tap, type pick, calendar sample events, clash,
   event sheet, quick-add ×2, tick + rewards, swipe, delete + undo, no console errors). Mac to-do pad re-checked after the
   TodoDay refactor. Not yet on a real iPhone (swipe feel, sign-in).
@@ -430,4 +431,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-10-17**: iPhone checked in the simulator on GitHub's Macs (new "Simulator check" workflow). Fixed what it found:
   tapping outside a pop-up clicked what was underneath (all pop-ups now close on the click), the To-do + didn't open
   its pop-up (now beside the Day +, opened by the phone screen), swipes were taken over by iOS scrolling (native
-  listeners), and Return put the keyboard away (no form in the pop-up).
+  listeners), and Return put the keyboard away (no form in the pop-up). Merged to main; TestFlight build started.
