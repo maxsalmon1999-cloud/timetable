@@ -2,7 +2,7 @@
 // ‹ › or a sideways swipe moves between days; + adds a block (Day) or to-dos (To-do).
 // Same saved plans, cloud sync and calendar as the Mac/iPad week view (App.tsx); only the screen is different.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type PointerEvent as RPointerEvent, type ReactNode, type TouchEvent } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import {
   CalendarBlankIcon,
   CalendarCheckIcon,
@@ -124,31 +124,62 @@ export default function PhoneApp() {
   }
 
   // ---------- swiping between days ----------
-  // Touch events, not pointer events: iOS cancels the pointer as soon as it starts scrolling the list, but touchend
-  // still comes. A mouse (browser preview) uses pointer events.
-  const swipe = useRef<{ x: number; y: number; t: number } | null>(null)
-  const swipeStart = (x: number, y: number, t: number) => (swipe.current = { x, y, t })
-  const swipeEnd = (x: number, y: number, t: number, target: EventTarget) => {
-    const s = swipe.current
-    swipe.current = null
-    if (!s || (target as Element).closest('.modal-backdrop')) return
-    const dx = x - s.x
-    const dy = y - s.y
-    if (Math.abs(dx) > 70 && Math.abs(dx) > 1.6 * Math.abs(dy) && t - s.t < 700) go(dx < 0 ? 1 : -1)
-  }
-  const swipeHandlers = {
-    onTouchStart: (e: TouchEvent) => {
-      const p = e.touches[0]
-      if (e.touches.length === 1) swipeStart(p.clientX, p.clientY, e.timeStamp)
-      else swipe.current = null
-    },
-    onTouchEnd: (e: TouchEvent) => {
+  // A sideways drag across the day changes the day. Native listeners, so a mostly sideways move can stop iOS
+  // scrolling (React's touch listeners can't): otherwise iOS takes it as a scroll and cancels the touch. A cancel still
+  // counts, from the last place the finger was. A mouse (browser preview) uses pointer events.
+  const bodyRef = useRef<HTMLElement>(null)
+  const swipeTo = useEffectEvent((n: 1 | -1) => go(n))
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    let start: { x: number; y: number; t: number } | null = null
+    let last = { x: 0, y: 0 }
+    const decide = (t: number) => {
+      if (!start) return
+      const dx = last.x - start.x
+      const dy = last.y - start.y
+      if (Math.abs(dx) > 70 && Math.abs(dx) > 1.6 * Math.abs(dy) && t - start.t < 800) swipeTo(dx < 0 ? 1 : -1)
+      start = null
+    }
+    const inSheet = (e: Event) => !!(e.target as Element).closest?.('.modal-backdrop')
+    const down = (x: number, y: number, t: number, e: Event) => {
+      start = inSheet(e) ? null : { x, y, t }
+      last = { x, y }
+    }
+    const onTouchStart = (e: TouchEvent) => (e.touches.length === 1 ? down(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp, e) : (start = null))
+    const onTouchMove = (e: TouchEvent) => {
+      if (!start) return
+      last = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      const dx = Math.abs(last.x - start.x)
+      if (dx > 10 && dx > Math.abs(last.y - start.y) && e.cancelable) e.preventDefault()
+    }
+    const onTouchEnd = (e: TouchEvent) => {
       const p = e.changedTouches[0]
-      swipeEnd(p.clientX, p.clientY, e.timeStamp, e.target)
-    },
-    onPointerDown: (e: RPointerEvent) => e.pointerType === 'mouse' && swipeStart(e.clientX, e.clientY, e.timeStamp),
-    onPointerUp: (e: RPointerEvent) => e.pointerType === 'mouse' && swipeEnd(e.clientX, e.clientY, e.timeStamp, e.target),
-  }
+      if (p) last = { x: p.clientX, y: p.clientY }
+      decide(e.timeStamp)
+    }
+    const onTouchCancel = (e: TouchEvent) => decide(e.timeStamp)
+    const onPointerDown = (e: PointerEvent) => e.pointerType === 'mouse' && down(e.clientX, e.clientY, e.timeStamp, e)
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return
+      last = { x: e.clientX, y: e.clientY }
+      decide(e.timeStamp)
+    }
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd)
+    el.addEventListener('touchcancel', onTouchCancel)
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointerup', onPointerUp)
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchCancel)
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointerup', onPointerUp)
+    }
+  }, [loaded])
 
   if (status.kind === 'load-failed')
     return (
@@ -213,7 +244,7 @@ export default function PhoneApp() {
         {tab === 'day' ? <CalendarPill synced={synced} state={cal.state} onClick={syncWeek} /> : <SoundButton on={sound} onChange={setSound} />}
       </div>
 
-      <main className="phone-body" {...swipeHandlers}>
+      <main className="phone-body" ref={bodyRef}>
         <div key={date + tab} className={'phone-page ' + (dir > 0 ? 'from-right' : 'from-left')}>
           {tab === 'day' ? (
             <DayView

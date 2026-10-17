@@ -19,6 +19,12 @@ export function QuickAdd({ dayName, onAdd, onClose }: { dayName: string; onAdd: 
   const [text, setText] = useState('')
   const [added, setAdded] = useState(0)
 
+  const add = () => {
+    onAdd(text)
+    setText('')
+    setAdded(added + 1)
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -35,15 +41,8 @@ export function QuickAdd({ dayName, onAdd, onClose }: { dayName: string; onAdd: 
             Done
           </button>
         </div>
-        <form
-          className="todo-add"
-          onSubmit={(e) => {
-            e.preventDefault()
-            onAdd(text)
-            setText('')
-            setAdded(added + 1)
-          }}
-        >
+        {/* no <form>: submitting one makes iOS put the keyboard away, and it should stay up for the next to-do */}
+        <div className="todo-add">
           {/* opened by a tap, so iOS lets it bring the keyboard up straight away */}
           <input
             autoFocus
@@ -52,14 +51,19 @@ export function QuickAdd({ dayName, onAdd, onClose }: { dayName: string; onAdd: 
             enterKeyHint="enter"
             autoCapitalize="sentences"
             onChange={(e) => setText(e.target.value)}
-            // Return on an empty line closes (the + is disabled then, so the form wouldn't submit)
-            onKeyDown={(e) => e.key === 'Enter' && !text.trim() && (e.preventDefault(), onClose())}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+              e.preventDefault()
+              // Return adds; Return on an empty line closes
+              if (text.trim()) add()
+              else onClose()
+            }}
           />
           {/* pressing it mustn't take the focus from the line, or the keyboard would drop and come back */}
-          <button className="btn square mint" type="submit" title="Add" disabled={!text.trim()} onPointerDown={(e) => e.preventDefault()}>
+          <button className="btn square mint" type="button" title="Add" disabled={!text.trim()} onPointerDown={(e) => e.preventDefault()} onClick={add}>
             <PlusIcon size={22} weight="bold" />
           </button>
-        </form>
+        </div>
       </div>
     </div>
   )
