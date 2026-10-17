@@ -37,6 +37,7 @@ Core ideas:
 | `npm run release [-- patch\|minor\|major\|x.y.z "notes"]` | ship an update to her (see "Releases & auto-update") |
 | GitHub → Actions → **Release** → Run workflow | the same release, built on GitHub's Mac (no Max's Mac needed) |
 | `npx tsc -b` / `npx oxlint` | typecheck / lint |
+| GitHub → Actions → **Simulator check** (also on push to `iphone-*`) | iPhone + iPad simulators on GitHub's Mac, tapped through; screenshots on branch `simulator-screenshots` |
 
 ## Code map
 
@@ -228,10 +229,22 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   **+** (mint) opens QuickAdd: a bottom pop-up with the keyboard up; Return adds and stays open for the next one, Return on
   an empty line / Done / tap outside closes. Tab badge = unticked items that day.
 - Pop-ups are bottom sheets in `.phone-app`; `--kb` (visualViewport) lifts them above the keyboard.
+- All pop-ups (Mac too) close on a *click* on the backdrop that also started there (`lib/backdrop.ts`). Closing on the
+  press made the click land on whatever was underneath on iPhone (it jumped to the next day).
+- Swipes use native touch listeners: a mostly sideways move calls preventDefault so iOS doesn't turn it into a scroll
+  and cancel the touch; a touchcancel still counts from the last position. Mouse uses pointer events (browser preview).
+- The to-do pop-up has no `<form>` (submitting one makes iOS hide the keyboard); Return adds, Return on empty closes.
+- **Simulator check** (`.github/workflows/simulator.yml` + `scripts/simulator-check.py`): builds for the simulator, seeds
+  a day into the app's Documents/Timetable Plans, taps through with idb (Homebrew needs `brew trust facebook/fb`) and
+  screenshots. The web content isn't in the accessibility tree, so taps go by screen position. The on-screen keyboard
+  is switched on (`ConnectHardwareKeyboard false`). Artifacts can't be downloaded from a Claude cloud session (blob host
+  blocked), so the workflow also force-pushes shrunk screenshots to the `simulator-screenshots` branch.
+- Simulator-verified 2026-10-17 (iPhone 17, iOS 26): launch, safe areas/status bar, Day view, block editor sheet,
+  backdrop close stays on the day, To-do + brings the keyboard up by itself with the pop-up sitting on it, Return adds,
+  iPad still shows the week.
 - Browser-verified at iPhone 13 (390×664) and iPhone SE sizes (add via + / tap, type pick, calendar sample events, clash,
   event sheet, quick-add ×2, tick + rewards, swipe, delete + undo, no console errors). Mac to-do pad re-checked after the
-  TodoDay refactor. **Not yet run on a real iPhone or the simulator**: keyboard lift (--kb), autofocus bringing the keyboard
-  up, swipe feel, safe areas, status bar.
+  TodoDay refactor. Not yet on a real iPhone (swipe feel, sign-in).
 
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
@@ -297,8 +310,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - [x] Hover card on blocks/events (browser-verified at 1450×820 and 1100×680: delay, instant swap, hide on leave/press/drag,
       Sunday flips left, template weekday). Calendar location/notes: Rust type-checked for aarch64-apple-darwin, **not yet
       seen with real EventKit data**. Released in v0.3.1.
-- [x] iPhone day view (Day + To-do tabs, ‹ › / swipe, + to add) in the universal iOS app. Browser-verified; **not yet on a
-      device/simulator or TestFlight**.
+- [x] iPhone day view (Day + To-do tabs, ‹ › / swipe, + to add) in the universal iOS app. Browser- and simulator-verified;
+      not yet on a real iPhone.
 - [x] Apple Calendar: sync button + current-week prompt, live refresh, all-day row, conflict highlighting (UI verified in
       browser with sample events; native EventKit build compiles/signs; real-calendar read awaiting Max clicking Allow)
 
@@ -414,3 +427,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   one day at a time: a Day tab (that day's timetable, tap to add/edit, + for the next free slot) and a To-do tab (that day's
   list with the Mac's rewards, + opens a quick-add pop-up on the keyboard); ‹ › or swipe between days. Shared logic moved to
   lib/plan.ts, TodoDay split out of the to-do pad. Not released; not yet run on a device.
+- **2026-10-17**: iPhone checked in the simulator on GitHub's Macs (new "Simulator check" workflow). Fixed what it found:
+  tapping outside a pop-up clicked what was underneath (all pop-ups now close on the click), the To-do + didn't open
+  its pop-up (now beside the Day +, opened by the phone screen), swipes were taken over by iOS scrolling (native
+  listeners), and Return put the keyboard away (no form in the pop-up).
