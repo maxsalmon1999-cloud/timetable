@@ -1,5 +1,6 @@
 # Opens the iOS app in an iPhone and an iPad simulator on one of GitHub's Macs, taps through the main flows
 # (scripts/simulator-check.py) and keeps the screenshots as the run's "simulator-screenshots" artifact.
+# The same screenshots (smaller) are force-pushed to the simulator-screenshots branch, so they can be fetched with git.
 # Runs on pushes to iphone-* branches and by hand: GitHub → Actions → Simulator check → Run workflow.
 name: Simulator check
 
@@ -9,7 +10,7 @@ on:
     branches: ['iphone-*']
 
 permissions:
-  contents: read
+  contents: write # only to push the screenshots to the simulator-screenshots branch
 
 jobs:
   screenshots:
@@ -58,3 +59,16 @@ jobs:
         with:
           name: simulator-screenshots
           path: screenshots
+
+      - name: Screenshots to the simulator-screenshots branch
+        if: always()
+        run: |
+          test -d screenshots || exit 0
+          mkdir -p /tmp/shots && cp screenshots/* /tmp/shots/
+          for f in /tmp/shots/*.png; do sips -Z 1100 "$f" >/dev/null; done
+          cd /tmp/shots
+          git init -q -b simulator-screenshots
+          git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -q --allow-empty -m "Simulator screenshots for ${GITHUB_SHA::7}"
+          git add -A
+          git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -q -m "Simulator screenshots for ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" simulator-screenshots

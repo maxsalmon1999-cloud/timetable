@@ -111,6 +111,8 @@ launch(phone)
 app_el = next((e for e in elements(phone) if e.get("type") == "Application"), None)
 w, h = (app_el["frame"]["width"], app_el["frame"]["height"]) if app_el else (402, 874)
 shot(phone, "phone-01-day")
+with open(os.path.join(OUT, "phone-elements.json"), "w") as f:  # what the accessibility tree offers, for fixing taps
+    json.dump(elements(phone), f, indent=1)
 tap(phone, "Add to", (w - 59, h - 145))  # Day tab + → new block
 shot(phone, "phone-02-new-block")
 tap(phone, "Close", (w - 40, 120))
