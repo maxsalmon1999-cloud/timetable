@@ -72,26 +72,23 @@ def shot(udid, name):
     run("xcrun", "simctl", "io", udid, "screenshot", os.path.join(OUT, name + ".png"))
 
 
-def elements(udid):
-    try:
-        return json.loads(idb("ui", "describe-all", "--udid", udid, "--json").stdout)
-    except Exception as e:  # noqa: BLE001
-        print("describe-all failed:", e, flush=True)
-        return []
-
-
-def tap(udid, label, fallback):
-    """tap the element whose accessibility label starts with `label`, else the fallback point (in points)"""
-    for el in elements(udid):
-        if (el.get("AXLabel") or "").startswith(label):
-            f = el["frame"]
-            x, y = f["x"] + f["width"] / 2, f["y"] + f["height"] / 2
-            break
-    else:
-        print(f"no element '{label}', tapping fallback {fallback}", flush=True)
-        x, y = fallback
+def tap(udid, x, y):
     idb("ui", "tap", "--udid", udid, str(round(x)), str(round(y)))
     time.sleep(1)
+
+
+def swipe(udid, x1, y1, x2, y2):
+    idb("ui", "swipe", "--udid", udid, str(round(x1)), str(round(y1)), str(round(x2)), str(round(y2)), "--duration", "0.3")
+    time.sleep(1)
+
+
+def screen(udid):
+    """the screen in points, from the accessibility tree (the web content itself isn't in it, so taps go by position)"""
+    try:
+        app = json.loads(idb("ui", "describe-all", "--udid", udid, "--json").stdout)[0]["frame"]
+        return app["width"], app["height"]
+    except Exception:  # noqa: BLE001
+        return 402, 874
 
 
 def launch(udid):
@@ -105,30 +102,33 @@ def launch(udid):
 
 
 # ---------- iPhone ----------
+# the on-screen keyboard, as on a phone (the simulator otherwise assumes the Mac's keyboard and hides it)
+run("defaults", "write", "com.apple.iphonesimulator", "ConnectHardwareKeyboard", "-bool", "false", check=False)
 phone = device("iPhone")
 launch(phone)
-# the screen in points (only used when an element can't be found by its label)
-app_el = next((e for e in elements(phone) if e.get("type") == "Application"), None)
-w, h = (app_el["frame"]["width"], app_el["frame"]["height"]) if app_el else (402, 874)
+w, h = screen(phone)
+fab = (w - 59, h - 145)  # the + over the list
+day_tab, todo_tab = (w * 0.26, h - 61), (w * 0.74, h - 61)
 shot(phone, "phone-01-day")
-with open(os.path.join(OUT, "phone-elements.json"), "w") as f:  # what the accessibility tree offers, for fixing taps
-    json.dump(elements(phone), f, indent=1)
-tap(phone, "Add to", (w - 59, h - 145))  # Day tab + → new block
+tap(phone, *fab)  # Day tab + → new block
 shot(phone, "phone-02-new-block")
-tap(phone, "Close", (w - 40, 120))
-tap(phone, "To-do", (w * 0.74, h - 61))
-shot(phone, "phone-03-todo")
-tap(phone, "Add a to-do", (w - 59, h - 145))
-shot(phone, "phone-04-quick-add-keyboard")
+tap(phone, w - 40, 120)  # outside the sheet, over the next-day button: closes, must not change the day
+shot(phone, "phone-03-closed-same-day")
+tap(phone, *todo_tab)
+shot(phone, "phone-04-todo")
+tap(phone, *fab)  # To-do tab + → pop-up with the keyboard
+shot(phone, "phone-05-quick-add-keyboard")
 idb("ui", "text", "--udid", phone, "Read chapter 3")
 idb("ui", "key", "--udid", phone, "40")  # Return: adds, stays open
-shot(phone, "phone-05-added")
+shot(phone, "phone-06-added")
 idb("ui", "key", "--udid", phone, "40")  # Return on an empty line: closes
-time.sleep(1)
-idb("ui", "swipe", "--udid", phone, str(round(w * 0.8)), "450", str(round(w * 0.15)), "460", "--duration", "0.2")
-shot(phone, "phone-06-swiped-next-day")
-tap(phone, "Day", (w * 0.26, h - 61))
-shot(phone, "phone-07-next-day-timetable")
+shot(phone, "phone-07-closed")
+swipe(phone, w * 0.85, h * 0.5, w * 0.1, h * 0.5 + 10)  # → next day
+shot(phone, "phone-08-swiped-next-day")
+tap(phone, *day_tab)
+shot(phone, "phone-09-next-day-timetable")
+swipe(phone, w * 0.1, h * 0.5, w * 0.85, h * 0.5 + 10)  # ← back
+shot(phone, "phone-10-swiped-back")
 
 # ---------- iPad: still the week ----------
 ipad = device("iPad")

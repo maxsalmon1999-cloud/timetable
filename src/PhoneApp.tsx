@@ -2,7 +2,7 @@
 // ‹ › or a sideways swipe moves between days; + adds a block (Day) or to-dos (To-do).
 // Same saved plans, cloud sync and calendar as the Mac/iPad week view (App.tsx); only the screen is different.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type PointerEvent as RPointerEvent, type ReactNode, type TouchEvent } from 'react'
 import {
   CalendarBlankIcon,
   CalendarCheckIcon,
@@ -34,8 +34,8 @@ import { BlockEditor } from './components/BlockEditor'
 import { CloudButton } from './components/CloudSync'
 import { Confirm, Modal } from './components/Modal'
 import { Count, SoundButton, TodoDay } from './components/TodoMenu'
-import { Fab } from './components/QuickAdd'
-import { soundOn } from './lib/rewards'
+import { Fab, QuickAdd } from './components/QuickAdd'
+import { soundOn, sounds } from './lib/rewards'
 
 type Tab = 'day' | 'todo'
 type Editing = { block: Block; isNew: boolean }
@@ -69,6 +69,7 @@ export default function PhoneApp() {
   const [dir, setDir] = useState<1 | -1>(1)
   const go = (n: 1 | -1) => {
     setDir(n)
+    setFreshTodo(null)
     setDate(shift(date, n))
   }
   const goTo = (iso: string) => {
@@ -83,6 +84,10 @@ export default function PhoneApp() {
   const [restoreNoticeSeen, setRestoreNoticeSeen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [sound, setSound] = useState(soundOn)
+  /** the to-do pop-up is open */
+  const [adding, setAdding] = useState(false)
+  /** the to-do just added, which drops into the list */
+  const [freshTodo, setFreshTodo] = useState<string | null>(null)
   const fxRef = useRef<HTMLDivElement>(null)
   useKeyboardInset()
 
@@ -119,20 +124,30 @@ export default function PhoneApp() {
   }
 
   // ---------- swiping between days ----------
+  // Touch events, not pointer events: iOS cancels the pointer as soon as it starts scrolling the list, but touchend
+  // still comes. A mouse (browser preview) uses pointer events.
   const swipe = useRef<{ x: number; y: number; t: number } | null>(null)
+  const swipeStart = (x: number, y: number, t: number) => (swipe.current = { x, y, t })
+  const swipeEnd = (x: number, y: number, t: number, target: EventTarget) => {
+    const s = swipe.current
+    swipe.current = null
+    if (!s || (target as Element).closest('.modal-backdrop')) return
+    const dx = x - s.x
+    const dy = y - s.y
+    if (Math.abs(dx) > 70 && Math.abs(dx) > 1.6 * Math.abs(dy) && t - s.t < 700) go(dx < 0 ? 1 : -1)
+  }
   const swipeHandlers = {
-    onPointerDown: (e: RPointerEvent) => {
-      swipe.current = e.isPrimary ? { x: e.clientX, y: e.clientY, t: e.timeStamp } : null
+    onTouchStart: (e: TouchEvent) => {
+      const p = e.touches[0]
+      if (e.touches.length === 1) swipeStart(p.clientX, p.clientY, e.timeStamp)
+      else swipe.current = null
     },
-    onPointerUp: (e: RPointerEvent) => {
-      const s = swipe.current
-      swipe.current = null
-      if (!s || (e.target as Element).closest('.modal-backdrop')) return
-      const dx = e.clientX - s.x
-      const dy = e.clientY - s.y
-      if (Math.abs(dx) > 70 && Math.abs(dx) > 1.6 * Math.abs(dy) && e.timeStamp - s.t < 700) go(dx < 0 ? 1 : -1)
+    onTouchEnd: (e: TouchEvent) => {
+      const p = e.changedTouches[0]
+      swipeEnd(p.clientX, p.clientY, e.timeStamp, e.target)
     },
-    onPointerCancel: () => (swipe.current = null),
+    onPointerDown: (e: RPointerEvent) => e.pointerType === 'mouse' && swipeStart(e.clientX, e.clientY, e.timeStamp),
+    onPointerUp: (e: RPointerEvent) => e.pointerType === 'mouse' && swipeEnd(e.clientX, e.clientY, e.timeStamp, e.target),
   }
 
   if (status.kind === 'load-failed')
@@ -149,6 +164,15 @@ export default function PhoneApp() {
 
   const isToday = date === today
   const counts = countDay(data.todos?.[weekKey]?.[day] ?? [], plan, new Set(data.todoTicks?.[weekKey] ?? []))
+
+  const addTodo = (text: string) => {
+    const t = text.trim()
+    if (!t) return
+    const id = uid()
+    update((d) => setDayTodos(d, weekKey, day, (l) => [...l, { id, text: t, done: false, since: date }]))
+    setFreshTodo(id)
+    sounds.add()
+  }
 
   /** + on the Day tab: a 1-hour block at the next free time (from now on today, from 9:00 on other days) */
   const newBlock = () => {
@@ -216,12 +240,17 @@ export default function PhoneApp() {
                 onTick={(id) => update((d) => toggleTick(d, weekKey, id))}
                 fx={fxRef}
                 heading={false}
-                quickAdd
+                addLine={false}
+                freshId={freshTodo}
               />
             </div>
           )}
         </div>
-        {tab === 'day' && <Fab label={`Add to ${weekdayName(date)}’s timetable`} onClick={newBlock} />}
+        {tab === 'day' ? (
+          <Fab label={`Add to ${weekdayName(date)}’s timetable`} onClick={newBlock} />
+        ) : (
+          <Fab label={`Add a to-do to ${weekdayName(date)}`} className="mint" onClick={() => setAdding(true)} />
+        )}
         {/* to-do rewards (confetti) are drawn here */}
         <div className="todo-fx" ref={fxRef} aria-hidden />
       </main>
@@ -276,6 +305,7 @@ export default function PhoneApp() {
           onClose={() => setEditing(null)}
         />
       )}
+      {adding && <QuickAdd dayName={weekdayName(date)} onAdd={addTodo} onClose={() => setAdding(false)} />}
       {viewing && <EventSheet event={viewing} onClose={() => setViewing(null)} />}
       {restoredFrom && !restoreNoticeSeen && (
         <Confirm

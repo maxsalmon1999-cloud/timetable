@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type MouseEvent as RMouseEvent, type Point
 import { BroomIcon, CalendarBlankIcon, CheckIcon, ListChecksIcon, PlusIcon, SpeakerSimpleHighIcon, SpeakerSimpleSlashIcon, XIcon } from '@phosphor-icons/react'
 import type { Todo } from '../lib/types'
 import { countDay, type Scheduled } from '../lib/plan'
-import { QuickAdd } from './QuickAdd'
 import { uid } from '../lib/constants'
 import { fmtTime, fromISO, toISO, weekLabel } from '../lib/dates'
 import { discIcon } from '../lib/icons'
@@ -195,12 +194,14 @@ interface DayProps {
   fx: RefObject<HTMLDivElement | null>
   /** the phone shows the day's name in its own header */
   heading?: boolean
-  /** the phone adds through a + button and a pop-up (QuickAdd) instead of the line at the bottom */
-  quickAdd?: boolean
+  /** the "Add to …" line at the bottom; the phone adds through its + button and pop-up instead (QuickAdd) */
+  addLine?: boolean
+  /** a to-do just added from outside (the phone's pop-up), which drops in */
+  freshId?: string | null
 }
 
 /** One day's list: progress, the day's timetable, her own to-dos, adding and clearing. Used by the pad and the phone. */
-export function TodoDay({ date, todos: list, plan, ticked, onChange: change, onTick, fx: fxRef, heading = true, quickAdd }: DayProps) {
+export function TodoDay({ date, todos: list, plan, ticked, onChange: change, onTick, fx: fxRef, heading = true, addLine = true, freshId }: DayProps) {
   const dayName = DAYS[weekday(date)]
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
@@ -386,7 +387,7 @@ export function TodoDay({ date, todos: list, plan, ticked, onChange: change, onT
           <li
             key={t.id}
             className={
-              'todo-item own' + (t.done ? ' done' : '') + (pressed === t.id ? ' pressed' : '') + (t.id === fresh ? ' fresh' : '') + (waited >= STALE_DAYS ? ' stale' : '')
+              'todo-item own' + (t.done ? ' done' : '') + (pressed === t.id ? ' pressed' : '') + (t.id === (fresh ?? freshId) ? ' fresh' : '') + (waited >= STALE_DAYS ? ' stale' : '')
             }
             title={waited > 0 ? `On your list since ${fromISO(t.since!).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}` : undefined}
           >
@@ -421,9 +422,7 @@ export function TodoDay({ date, todos: list, plan, ticked, onChange: change, onT
       </ul>
 
       <div className="todo-foot">
-        {quickAdd ? (
-          <QuickAdd dayName={dayName} onAdd={add} />
-        ) : (
+        {addLine && (
           <form
             className="todo-add"
             onSubmit={(e) => {

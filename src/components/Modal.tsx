@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { backdropClose } from '../lib/backdrop'
 import { XIcon } from '@phosphor-icons/react'
 import { PALETTE } from '../lib/icons'
 
@@ -43,7 +44,7 @@ export function Modal({
   }, [onClose])
 
   return (
-    <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-backdrop" {...backdropClose(onClose)}>
       <div className="modal" role="dialog" aria-label={title} style={{ width }}>
         <div className="panel-head" style={{ background: color }}>
           <div className="panel-title">
