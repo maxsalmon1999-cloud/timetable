@@ -234,6 +234,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - Swipes use native touch listeners: a mostly sideways move calls preventDefault so iOS doesn't turn it into a scroll
   and cancel the touch; a touchcancel still counts from the last position. Mouse uses pointer events (browser preview).
 - The to-do pop-up has no `<form>` (submitting one makes iOS hide the keyboard); Return adds, Return on empty closes.
+- On a day gone by, the To-do **+** jumps to today first (a to-do added there would move to today at once anyway).
+- No rubber-band bounce (`html, body { overscroll-behavior: none }`, all screens) and no double-tap zoom on the phone.
 - **Simulator check** (`.github/workflows/simulator.yml` + `scripts/simulator-check.py`): builds for the simulator, seeds
   a day into the app's Documents/Timetable Plans, taps through with idb (Homebrew needs `brew trust facebook/fb`) and
   screenshots. The web content isn't in the accessibility tree, so taps go by screen position. The on-screen keyboard
@@ -432,3 +434,6 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   tapping outside a pop-up clicked what was underneath (all pop-ups now close on the click), the To-do + didn't open
   its pop-up (now beside the Day +, opened by the phone screen), swipes were taken over by iOS scrolling (native
   listeners), and Return put the keyboard away (no form in the pop-up). Merged to main; TestFlight build started.
+- **2026-10-18**: iPhone bug pass (code read + 25 browser checks incl. CDP finger swipes): adding a to-do on a past day now
+  goes to today (it used to vanish into today's list), no page bounce, no double-tap zoom, a new to-do doesn't replay its
+  drop-in after switching tabs. Still not on a real device or local simulator (this was a cloud session).

@@ -74,10 +74,15 @@ export default function PhoneApp() {
   }
   const goTo = (iso: string) => {
     setDir(iso < date ? -1 : 1)
+    setFreshTodo(null)
     setDate(iso)
   }
 
-  const [tab, setTab] = useState<Tab>('day')
+  const [tab, setTabState] = useState<Tab>('day')
+  const setTab = (t: Tab) => {
+    setTabState(t)
+    setFreshTodo(null)
+  }
   const [editing, setEditing] = useState<Editing | null>(null)
   const [viewing, setViewing] = useState<DayEvent | CalEvent | null>(null)
   const [confirming, setConfirming] = useState<Confirming | null>(null)
@@ -280,7 +285,15 @@ export default function PhoneApp() {
         {tab === 'day' ? (
           <Fab label={`Add to ${weekdayName(date)}’s timetable`} onClick={newBlock} />
         ) : (
-          <Fab label={`Add a to-do to ${weekdayName(date)}`} className="mint" onClick={() => setAdding(true)} />
+          <Fab
+            label={date < today ? 'Add a to-do to today' : `Add a to-do to ${weekdayName(date)}`}
+            className="mint"
+            onClick={() => {
+              // to-dos left on a day gone by move on to today at once (lib/rollover.ts), so add them there
+              if (date < today) goTo(today)
+              setAdding(true)
+            }}
+          />
         )}
         {/* to-do rewards (confetti) are drawn here */}
         <div className="todo-fx" ref={fxRef} aria-hidden />
