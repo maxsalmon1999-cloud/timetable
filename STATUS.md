@@ -433,7 +433,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-10-17**: iPhone checked in the simulator on GitHub's Macs (new "Simulator check" workflow). Fixed what it found:
   tapping outside a pop-up clicked what was underneath (all pop-ups now close on the click), the To-do + didn't open
   its pop-up (now beside the Day +, opened by the phone screen), swipes were taken over by iOS scrolling (native
-  listeners), and Return put the keyboard away (no form in the pop-up). Merged to main; TestFlight build started.
+  listeners), and Return put the keyboard away (no form in the pop-up). Merged to main. TestFlight not run yet: this
+  session gets 403 on workflow_dispatch, so Max starts it (Actions → TestFlight → Run workflow).
 - **2026-10-18**: iPhone bug pass (code read + 25 browser checks incl. CDP finger swipes): adding a to-do on a past day now
   goes to today (it used to vanish into today's list), no page bounce, no double-tap zoom, a new to-do doesn't replay its
   drop-in after switching tabs. Still not on a real device or local simulator (this was a cloud session).
