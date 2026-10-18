@@ -37,6 +37,7 @@ Core ideas:
 | `npm run release [-- patch\|minor\|major\|x.y.z "notes"]` | ship an update to her (see "Releases & auto-update") |
 | GitHub → Actions → **Release** → Run workflow | the same release, built on GitHub's Mac (no Max's Mac needed) |
 | `npx tsc -b` / `npx oxlint` | typecheck / lint |
+| Change `.github/testflight-request` on main (or Actions → **TestFlight** → Run workflow) | build the iOS app and send it to TestFlight |
 | GitHub → Actions → **Simulator check** (also on push to `iphone-*`) | iPhone + iPad simulators on GitHub's Mac, tapped through; screenshots on branch `simulator-screenshots` |
 
 ## Code map
@@ -438,3 +439,6 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-10-18**: iPhone bug pass (code read + 25 browser checks incl. CDP finger swipes): adding a to-do on a past day now
   goes to today (it used to vanish into today's list), no page bounce, no double-tap zoom, a new to-do doesn't replay its
   drop-in after switching tabs. Still not on a real device or local simulator (this was a cloud session).
+- **2026-10-19**: Her TestFlight still offered build 0.8.0.7 (iPad only, 6 Oct), so her iPhone said "can only be tested on
+  an iPad". TestFlight now also runs when `.github/testflight-request` changes on main (sessions can push but get 403 on
+  workflow_dispatch); used it to start the first iPhone build.

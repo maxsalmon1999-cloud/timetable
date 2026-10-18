@@ -2,7 +2,8 @@
 # iPad and iPhone pick it up.
 #
 # Runs after every successful Mac Release (same code, same version), once a month so her TestFlight build never
-# reaches its 90-day expiry, and by hand: GitHub → Actions → TestFlight → Run workflow.
+# reaches its 90-day expiry, by hand (GitHub → Actions → TestFlight → Run workflow), and when
+# .github/testflight-request changes on main.
 #
 # Needs repository secrets (scripts/setup-testflight-secrets.sh puts them there):
 #   APP_STORE_CONNECT_KEY_ID      the API key's Key ID
@@ -13,6 +14,11 @@ name: TestFlight
 
 on:
   workflow_dispatch:
+  # changing .github/testflight-request asks for a build (how a Claude session starts one: it can push, but not
+  # press Run workflow). Ordinary pushes don't build.
+  push:
+    branches: [main]
+    paths: ['.github/testflight-request']
   workflow_run:
     workflows: [Release]
     types: [completed]
