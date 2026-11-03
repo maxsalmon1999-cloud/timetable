@@ -491,3 +491,8 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   months by ‹ › / swipe). Tick sparkles now show (gently) with Reduce Motion on, found with the new WebKit check.
 - **2026-11-03**: Release can also be started by changing `.github/release-request` on main (sessions get 403 on
   workflow_dispatch). Used it to release v0.9.0 (friends, iPhone month view, sparkles with Reduce Motion).
+- **2026-11-03**: **Released v0.9.0** (Release run via `.github/release-request`; latest.json 0.9.0 for both Mac platforms).
+  The TestFlight run after it failed at export: "Unable to process request - PLA Update available" / "No profiles for
+  'com.maxsalmon.timetable'": Apple's updated Program License Agreement wasn't accepted. Max accepted it at
+  developer.apple.com/account; the re-run (via `.github/testflight-request`) uploaded build 0.9.0.11 with no errors.
+  Lesson: that export error means an agreement is waiting in the Apple Developer account, not a code problem.
