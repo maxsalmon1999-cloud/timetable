@@ -35,19 +35,21 @@ function StatusIcon({ status }: { status: CloudStatus }) {
 }
 
 /** The sync pill in the sidebar; opens the sign-in / account window. Hidden when sync isn't set up. */
-export function CloudButton({ cloud }: { cloud: Cloud }) {
+/** `compact` (iPhone): just the status icon once she's signed in, to leave room in the strip */
+export function CloudButton({ cloud, compact }: { cloud: Cloud; compact?: boolean }) {
   const [open, setOpen] = useState(false)
   if (cloud.status.kind === 'off') return null
   const s = cloud.status
   return (
     <>
       <button
-        className={'save-pill cloud ' + s.kind}
+        className={'save-pill cloud ' + s.kind + (compact && s.kind !== 'signed-out' ? ' icon-only' : '')}
+        aria-label={LABELS[s.kind as keyof typeof LABELS]}
         title={s.kind === 'error' ? s.message : s.kind === 'offline' ? 'Changes are saved here and will sync when you’re back online' : 'Sync your plans across your devices'}
         onClick={() => setOpen(true)}
       >
         <StatusIcon status={s} />
-        {LABELS[s.kind]}
+        {compact ? (s.kind === 'signed-out' ? 'Sync' : null) : LABELS[s.kind]}
       </button>
       {open && <SyncModal cloud={cloud} onClose={() => setOpen(false)} />}
     </>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
-import { CursorClickIcon, HandGrabbingIcon, PencilSimpleIcon, PlusIcon, SelectionPlusIcon, XIcon } from '@phosphor-icons/react'
+import { CursorClickIcon, HandGrabbingIcon, PencilSimpleIcon, PlusIcon, SelectionPlusIcon, UsersThreeIcon, XIcon } from '@phosphor-icons/react'
 import type { Activity } from '../lib/types'
 import { fmtDuration } from '../lib/dates'
 import { discIcon } from '../lib/icons'
@@ -28,12 +28,15 @@ interface Props {
   onFocusTag: (id: string | null) => void
   /** blocks of each type in the week on screen, by activity id */
   weekCounts: Record<string, number>
+  /** friends past their reminder */
+  friendsDue: number
+  onFriends: () => void
 }
 
 const HOVER_MS = 350
 const HOLD_MS = 300
 
-export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus, folder, onRetrySave, version, children, focusTag, onFocusTag, weekCounts }: Props) {
+export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus, folder, onRetrySave, version, children, focusTag, onFocusTag, weekCounts, friendsDue, onFriends }: Props) {
   const [editing, setEditing] = useState<Activity | 'new' | null>(null)
   const filter = useTypeFilter(focusTag, onFocusTag)
   const [deleting, setDeleting] = useState<Activity | null>(null)
@@ -86,6 +89,11 @@ export function Sidebar({ activities, onDragStart, onSave, onDelete, saveStatus,
       </ul>
 
       <div className="sidebar-foot">
+        <button className="btn friends-btn" onClick={onFriends} title={friendsDue ? `${friendsDue} friend${friendsDue > 1 ? 's' : ''} to catch up with` : 'Keep track of friends'}>
+          <UsersThreeIcon size={20} weight="bold" />
+          Friends
+          {friendsDue > 0 && <span className="badge mono due">{friendsDue}</span>}
+        </button>
         <div className="hints">
           <div><HandGrabbingIcon size={20} weight="bold" /><span><b>Drag</b> an activity onto a day</span></div>
           <div><SelectionPlusIcon size={20} weight="bold" /><span><b>Drag on empty space</b> for any length</span></div>

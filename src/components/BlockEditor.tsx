@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { CheckIcon, PlusIcon, SquaresFourIcon, TrashIcon, WarningIcon } from '@phosphor-icons/react'
-import type { Activity, Block } from '../lib/types'
+import type { Activity, Block, Friend } from '../lib/types'
+import { namedIn } from '../lib/friends'
+import { FriendChips, FriendDisc } from './Friends'
 import { COLORS, MAX_END, MIN_START, SNAP } from '../lib/constants'
-import { BASE_ICONS, discIcon, guessIcon } from '../lib/icons'
+import { BASE_ICONS, discIcon, guessIcon, PALETTE } from '../lib/icons'
 import { fmtTime, fromISO } from '../lib/dates'
 import { overlaps, type DayEvent } from '../lib/calendar'
 import { Modal } from './Modal'
@@ -18,6 +20,7 @@ export function BlockEditor({
   block,
   isNew,
   activities,
+  friends = [],
   weekdayOnly,
   clashes,
   onSave,
@@ -28,6 +31,8 @@ export function BlockEditor({
   block: Block
   isNew: boolean
   activities: Activity[]
+  /** her friends (not removed), for "With" */
+  friends?: Friend[]
   /** template drafts have no real dates: just say "Monday" */
   weekdayOnly?: boolean
   /** this day's timed calendar events */
@@ -72,13 +77,34 @@ export function BlockEditor({
     if (phone && isNew) setEnd(Math.min(MAX_END, start + a.duration))
   }
 
-  const save = () => {
+  /** friends who were (or will be) there; tags of removed friends are kept, just not shown */
+  const [withIds, setWithIds] = useState<string[]>(block.friends ?? [])
+  const toggleWith = (id: string) => setWithIds(withIds.includes(id) ? withIds.filter((x) => x !== id) : [...withIds, id])
+  /** friends the name mentions who aren't ticked under "With": asked about before saving */
+  const [asking, setAsking] = useState<{ friends: Friend[]; picked: string[] } | null>(null)
+
+  const save = (extra: string[] = [], ask = true) => {
     if (!title.trim()) return
-    const { icon: _i, iconWeight: _w, tag: _t, ...rest } = block // eslint-disable-line @typescript-eslint/no-unused-vars
+    // a name mentioning a friend ("Lunch with Aoi"): check before tagging them, as some names are ordinary words too.
+    // Only for names new in this edit, so saving an old block again doesn't ask again.
+    const before = isNew ? [] : namedIn(block.title, friends).map((f) => f.id)
+    const mentioned = namedIn(title, friends).filter((f) => !withIds.includes(f.id) && !before.includes(f.id))
+    if (ask && mentioned.length) return setAsking({ friends: mentioned, picked: mentioned.map((f) => f.id) })
+    const { icon: _i, iconWeight: _w, tag: _t, friends: _f, ...rest } = block // eslint-disable-line @typescript-eslint/no-unused-vars
     // a block named exactly like an activity, with no type picked, is that type
     const finalTag = tag ?? activities.find((a) => a.name.trim().toLowerCase() === title.trim().toLowerCase())?.id
+    const people = [...withIds, ...extra.filter((id) => !withIds.includes(id))]
     onSave(
-      { ...rest, title: title.trim(), color, start, end: Math.max(end, start + SNAP), ...(finalTag ? { tag: finalTag } : {}), ...(icon ? { icon, iconWeight } : {}) },
+      {
+        ...rest,
+        title: title.trim(),
+        color,
+        start,
+        end: Math.max(end, start + SNAP),
+        ...(finalTag ? { tag: finalTag } : {}),
+        ...(icon ? { icon, iconWeight } : {}),
+        ...(people.length ? { friends: people } : {}),
+      },
       addToBank && !inBank,
     )
   }
@@ -174,6 +200,12 @@ export function BlockEditor({
             <span className="label">What</span>
             <input autoFocus={!isIOS /* the iPad/iPhone keyboard would cover half the editor; she usually picks a chip */} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Piano practice" />
           </label>
+          {friends.length > 0 && (
+            <div className="field">
+              <span className="label">With</span>
+              <FriendChips friends={friends} selected={withIds} onToggle={toggleWith} />
+            </div>
+          )}
           {phone && times}
           {looks ? (
             looksFields
@@ -218,6 +250,32 @@ export function BlockEditor({
         </form>
       </Modal>
 
+      {asking && (
+        <Modal title={asking.friends.length === 1 ? `With ${asking.friends[0].name}?` : 'With these friends?'} color={PALETTE.pink} width={440} onClose={() => setAsking(null)}>
+          <div className="modal-body">
+            <p className="modal-message">
+              “{title.trim()}” mentions {asking.friends.length === 1 ? asking.friends[0].name : 'some of your friends'}. Tag{' '}
+              {asking.friends.length === 1 ? 'them' : 'the ones who were there'}, so it counts as time together?
+            </p>
+            {asking.friends.length > 1 && (
+              <FriendChips
+                friends={asking.friends}
+                selected={asking.picked}
+                onToggle={(id) => setAsking({ ...asking, picked: asking.picked.includes(id) ? asking.picked.filter((x) => x !== id) : [...asking.picked, id] })}
+              />
+            )}
+            <div className="modal-actions">
+              <button className="btn" onClick={() => save([], false)}>
+                No
+              </button>
+              <button className="btn primary" disabled={!asking.picked.length} onClick={() => save(asking.picked, false)}>
+                {asking.friends.length === 1 ? <FriendDisc friend={asking.friends[0]} size={22} /> : null}
+                {asking.friends.length === 1 ? `Yes, tag ${asking.friends[0].name}` : 'Tag them'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {library && (
         <Modal title="Choose an icon" color={color} width={640} onClose={() => setLibrary(false)}>
           <div className="modal-body">

@@ -14,6 +14,7 @@ import {
   ListChecksIcon,
   MapPinIcon,
   NotepadIcon,
+  UsersThreeIcon,
   WarningIcon,
 } from '@phosphor-icons/react'
 import { useAppData } from './lib/store'
@@ -36,8 +37,11 @@ import { Confirm, Modal } from './components/Modal'
 import { Count, SoundButton, TodoDay } from './components/TodoMenu'
 import { Fab, QuickAdd } from './components/QuickAdd'
 import { soundOn, sounds } from './lib/rewards'
+import { useFriends } from './lib/useFriends'
+import { addFriend, changeFriend, live, removeFriend } from './lib/friends'
+import { FriendsPanel, FriendsPing } from './components/Friends'
 
-type Tab = 'day' | 'todo'
+type Tab = 'day' | 'todo' | 'month'
 type Editing = { block: Block; isNew: boolean }
 type Confirming = Omit<ComponentProps<typeof Confirm>, 'onClose'>
 
@@ -47,6 +51,11 @@ const PX = HOUR_PX / 60
 const weekdayName = (iso: string) => fromISO(iso).toLocaleDateString('en-GB', { weekday: 'long' })
 const dayMonth = (iso: string) => fromISO(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
 const shift = (iso: string, n: number) => toISO(addDays(fromISO(iso), n))
+/** the 1st of the month n months on from the month of `iso` */
+const monthOf = (iso: string, n = 0) => {
+  const d = fromISO(iso)
+  return toISO(new Date(d.getFullYear(), d.getMonth() + n, 1))
+}
 
 export default function PhoneApp() {
   const { data, update, undo, canUndo, status, restoredFrom, applyRemote, updateSync, updateSilently } = useAppData()
@@ -67,10 +76,12 @@ export default function PhoneApp() {
   }
   /** which way the last day change went, so the new day slides in from that side */
   const [dir, setDir] = useState<1 | -1>(1)
+  /** ‹ › and swipes: a day at a time, or a month at a time on the Month tab */
   const go = (n: 1 | -1) => {
     setDir(n)
     setFreshTodo(null)
-    setDate(shift(date, n))
+    if (tab === 'month') setMonth(monthOf(month, n))
+    else setDate(shift(date, n))
   }
   const goTo = (iso: string) => {
     setDir(iso < date ? -1 : 1)
@@ -79,10 +90,15 @@ export default function PhoneApp() {
   }
 
   const [tab, setTabState] = useState<Tab>('day')
+  /** the month on the Month tab (its 1st); opens on the month of the day she's on */
+  const [month, setMonth] = useState(() => monthOf(today))
   const setTab = (t: Tab) => {
+    if (t === 'month' && tab !== 'month') setMonth(monthOf(date))
     setTabState(t)
     setFreshTodo(null)
   }
+  const friends = useFriends(data, today, updateSilently)
+  const [friendsOpen, setFriendsOpen] = useState(false)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [viewing, setViewing] = useState<DayEvent | CalEvent | null>(null)
   const [confirming, setConfirming] = useState<Confirming | null>(null)
@@ -222,36 +238,75 @@ export default function PhoneApp() {
   return (
     <div className="phone-app">
       <header className="phone-head">
-        <button className="btn square" aria-label="Previous day" onClick={() => go(-1)}>
+        <button className="btn square" aria-label={tab === 'month' ? 'Previous month' : 'Previous day'} onClick={() => go(-1)}>
           <CaretLeftIcon size={24} weight="bold" />
         </button>
-        <div className="phone-title">
-          <h1>{weekdayName(date)}</h1>
-          <div className="phone-date">
-            <span>{dayMonth(date)}</span>
-            {isToday ? (
-              <span className="phone-today-tag">Today</span>
-            ) : (
-              <button className="phone-today-btn" onClick={() => goTo(today)}>
-                Go to today
-              </button>
-            )}
+        {tab === 'month' ? (
+          <div className="phone-title">
+            <h1>{fromISO(month).toLocaleDateString('en-GB', { month: 'long' })}</h1>
+            <div className="phone-date">
+              <span>{fromISO(month).getFullYear()}</span>
+              {month === monthOf(today) ? (
+                <span className="phone-today-tag">This month</span>
+              ) : (
+                <button
+                  className="phone-today-btn"
+                  onClick={() => {
+                    setDir(month < monthOf(today) ? 1 : -1)
+                    setMonth(monthOf(today))
+                  }}
+                >
+                  Go to this month
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-        <button className="btn square" aria-label="Next day" onClick={() => go(1)}>
+        ) : (
+          <div className="phone-title">
+            <h1>{weekdayName(date)}</h1>
+            <div className="phone-date">
+              <span>{dayMonth(date)}</span>
+              {isToday ? (
+                <span className="phone-today-tag">Today</span>
+              ) : (
+                <button className="phone-today-btn" onClick={() => goTo(today)}>
+                  Go to today
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        <button className="btn square" aria-label={tab === 'month' ? 'Next month' : 'Next day'} onClick={() => go(1)}>
           <CaretRightIcon size={24} weight="bold" />
         </button>
       </header>
 
       <div className="phone-strip">
-        <CloudButton cloud={cloud} />
+        <CloudButton cloud={cloud} compact />
+        <button className="save-pill phone-friends" onClick={() => setFriendsOpen(true)}>
+          <UsersThreeIcon size={18} weight="bold" />
+          Friends
+          {friends.overdue.length > 0 && <span className="badge mono due">{friends.overdue.length}</span>}
+        </button>
         <span className="phone-strip-gap" />
-        {tab === 'day' ? <CalendarPill synced={synced} state={cal.state} onClick={syncWeek} /> : <SoundButton on={sound} onChange={setSound} />}
+        {tab === 'day' && <CalendarPill synced={synced} state={cal.state} onClick={syncWeek} />}
+        {tab === 'todo' && <SoundButton on={sound} onChange={setSound} />}
       </div>
 
       <main className="phone-body" ref={bodyRef}>
-        <div key={date + tab} className={'phone-page ' + (dir > 0 ? 'from-right' : 'from-left')}>
-          {tab === 'day' ? (
+        <div key={(tab === 'month' ? month : date) + tab} className={'phone-page ' + (dir > 0 ? 'from-right' : 'from-left')}>
+          {tab === 'month' ? (
+            <MonthView
+              month={month}
+              today={today}
+              selected={date}
+              blocks={data.blocks}
+              onPick={(iso) => {
+                goTo(iso)
+                setTabState('day')
+              }}
+            />
+          ) : tab === 'day' ? (
             <DayView
               date={date}
               isToday={isToday}
@@ -282,7 +337,7 @@ export default function PhoneApp() {
             </div>
           )}
         </div>
-        {tab === 'day' ? (
+        {tab === 'month' ? null : tab === 'day' ? (
           <Fab label={`Add to ${weekdayName(date)}’s timetable`} onClick={newBlock} />
         ) : (
           <Fab
@@ -318,13 +373,17 @@ export default function PhoneApp() {
 
       <nav className="phone-tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'day'} className={tab === 'day' ? 'on' : ''} onClick={() => setTab('day')}>
-          <CalendarDotsIcon size={24} weight="bold" />
+          <ClockIcon size={24} weight="bold" />
           Day
         </button>
         <button role="tab" aria-selected={tab === 'todo'} className={tab === 'todo' ? 'on' : ''} onClick={() => setTab('todo')}>
           <ListChecksIcon size={24} weight="bold" />
           To-do
           <Count left={counts.left} total={counts.total} className="badge mono" />
+        </button>
+        <button role="tab" aria-selected={tab === 'month'} className={tab === 'month' ? 'on' : ''} onClick={() => setTab('month')}>
+          <CalendarDotsIcon size={24} weight="bold" />
+          Month
         </button>
       </nav>
 
@@ -334,6 +393,7 @@ export default function PhoneApp() {
           block={editing.block}
           isNew={editing.isNew}
           activities={data.activities}
+          friends={live(data.friends)}
           clashes={events.timed}
           phone
           onSave={(b, addToBank) => {
@@ -351,6 +411,16 @@ export default function PhoneApp() {
       )}
       {adding && <QuickAdd dayName={weekdayName(date)} onAdd={addTodo} onClose={() => setAdding(false)} />}
       {viewing && <EventSheet event={viewing} onClose={() => setViewing(null)} />}
+      {friends.ping && <FriendsPing overdue={friends.ping} onClose={friends.closePing} onOpenList={() => setFriendsOpen(true)} />}
+      {friendsOpen && (
+        <FriendsPanel
+          statuses={friends.statuses}
+          onAdd={(name) => update((d) => addFriend(d, { id: uid(), name, added: today }))}
+          onChange={(id, change) => update((d) => changeFriend(d, id, change))}
+          onRemove={(id) => update((d) => removeFriend(d, id))}
+          onClose={() => setFriendsOpen(false)}
+        />
+      )}
       {restoredFrom && !restoreNoticeSeen && (
         <Confirm
           title="Restored from backup"
@@ -361,6 +431,55 @@ export default function PhoneApp() {
         />
       )}
       {confirming && <Confirm {...confirming} onClose={() => setConfirming(null)} />}
+    </div>
+  )
+}
+
+const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/**
+ * A month of days, each a button that stands out from the page (press it to open that day). Only the month's own
+ * days are drawn; each shows up to four dots in the colours of what's planned.
+ */
+function MonthView({ month, today, selected, blocks, onPick }: { month: string; today: string; selected: string; blocks: Block[]; onPick: (iso: string) => void }) {
+  const first = fromISO(month)
+  const lead = (first.getDay() + 6) % 7
+  const count = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
+  const prefix = month.slice(0, 8)
+  const byDay = new Map<string, Block[]>()
+  for (const b of blocks) if (b.date.startsWith(prefix)) byDay.set(b.date, [...(byDay.get(b.date) ?? []), b])
+  const rows = Math.ceil((lead + count) / 7)
+  return (
+    <div className="month">
+      <div className="month-dow" aria-hidden>
+        {DOW.map((d) => (
+          <span key={d}>{d}</span>
+        ))}
+      </div>
+      <div className="month-grid" style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}>
+        {Array.from({ length: lead }, (_, i) => (
+          <span key={'blank' + i} />
+        ))}
+        {Array.from({ length: count }, (_, i) => {
+          const iso = prefix + String(i + 1).padStart(2, '0')
+          const planned = (byDay.get(iso) ?? []).sort((a, b) => a.start - b.start)
+          return (
+            <button
+              key={iso}
+              className={'month-day' + (iso === today ? ' today' : '') + (iso === selected ? ' selected' : '') + (iso < today ? ' past' : '')}
+              aria-label={`${weekdayName(iso)} ${dayMonth(iso)}${planned.length ? `, ${planned.length} planned` : ''}`}
+              onClick={() => onPick(iso)}
+            >
+              <span className="month-num">{i + 1}</span>
+              <span className="month-dots" aria-hidden>
+                {planned.slice(0, 4).map((b) => (
+                  <span key={b.id} style={{ ['--c' as string]: b.color }} />
+                ))}
+              </span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

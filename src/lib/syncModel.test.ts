@@ -179,3 +179,51 @@ test('ticks on calendar events with slashes in their ids survive', () => {
   sync(ipad, cloud)
   assert.deepEqual(ipad.data.todoTicks, { '2026-10-05': [id] })
 })
+
+const friend = (id: string, name: string, more = {}) => ({ id, name, added: '2026-10-01', ...more })
+
+test('friends and the daily check sync between devices', () => {
+  const cloud: Docs = new Map()
+  const phone = device(data({ friends: [friend('f1', 'Aoi', { remindDays: 14 })], friendsChecked: '2026-11-03' }))
+  sync(phone, cloud)
+  const mac = device(data())
+  sync(mac, cloud)
+  assert.deepEqual(mac.data.friends?.map((f) => f.name), ['Aoi'])
+  assert.equal(mac.data.friendsChecked, '2026-11-03')
+})
+
+test('an older app dropping a friend from the cloud does not lose it', () => {
+  const cloud: Docs = new Map()
+  const phone = device(data({ friends: [friend('f1', 'Aoi')] }))
+  sync(phone, cloud)
+  cloud.delete('f:f1') // what v0.8.0 does to docs it doesn't know
+  sync(phone, cloud)
+  assert.deepEqual(phone.data.friends?.map((f) => f.name), ['Aoi'])
+  assert.ok(cloud.has('f:f1'))
+})
+
+test('removing a friend syncs as removed, and an undone add becomes removed too', () => {
+  const cloud: Docs = new Map()
+  const phone = device(data({ friends: [friend('f1', 'Aoi'), friend('f2', 'Sam')] }))
+  sync(phone, cloud)
+  const mac = device(data())
+  sync(mac, cloud)
+  mac.data = { ...mac.data, friends: mac.data.friends!.map((f) => (f.id === 'f1' ? { ...f, removed: true as const } : f)) }
+  sync(mac, cloud)
+  sync(phone, cloud)
+  assert.equal(phone.data.friends?.find((f) => f.id === 'f1')?.removed, true)
+  // undo of adding Sam on the phone: gone locally
+  phone.data = { ...phone.data, friends: phone.data.friends!.filter((f) => f.id !== 'f2') }
+  sync(phone, cloud)
+  sync(mac, cloud)
+  assert.equal(mac.data.friends?.find((f) => f.id === 'f2')?.removed, true)
+})
+
+test('friends on a block sync with the block', () => {
+  const cloud: Docs = new Map()
+  const phone = device(data({ blocks: [{ ...blk('b1', 'Lunch with Aoi'), friends: ['f1'] }] }))
+  sync(phone, cloud)
+  const mac = device(data())
+  sync(mac, cloud)
+  assert.deepEqual(mac.data.blocks[0].friends, ['f1'])
+})

@@ -3,6 +3,9 @@ import { useAppData } from './lib/store'
 import type { Activity, AppData, Block, Template, TemplateBlock, Todo } from './lib/types'
 import { saveBlock as saveBlockIn, scheduledOn, setDayTodos, toggleTick as toggleTickIn, type Scheduled } from './lib/plan'
 import { useToday } from './lib/useToday'
+import { useFriends } from './lib/useFriends'
+import { addFriend, changeFriend, live, removeFriend } from './lib/friends'
+import { FriendsPanel, FriendsPing } from './components/Friends'
 import { MAX_END, MIN_START, SNAP, snap, uid } from './lib/constants'
 import { addDays, fmtTime, startOfWeek, monthLabel, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
 import { WeekGrid, type HitTest, type Preview } from './components/WeekGrid'
@@ -93,6 +96,8 @@ export default function App() {
   useEffect(() => {
     if (loaded) updateSilently((d) => rollover(d, today))
   }, [loaded, today, data?.todos, updateSilently])
+  const friends = useFriends(data, today, updateSilently)
+  const [friendsOpen, setFriendsOpen] = useState(false)
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [drag, setDrag] = useState<Drag | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -364,10 +369,11 @@ export default function App() {
 
   const weekCounts: Record<string, number> = {}
   for (const b of weekBlocks) if (b.tag) weekCounts[b.tag] = (weekCounts[b.tag] ?? 0) + 1
+  const friendNames = Object.fromEntries(live(data.friends).map((f) => [f.id, f.name]))
   const isThisWeek = toISO(weekStart) === toISO(startOfWeek(new Date()))
   const showSyncPrompt =
     !inTemplate && isThisWeek && !synced && weekBlocks.length === 0 && syncPromptDismissed !== weekKey &&
-    !editing && !confirming && !(restoredFrom && !restoreNoticeSeen)
+    !editing && !confirming && !(restoredFrom && !restoreNoticeSeen) && !friends.ping
   // while moving/resizing, hide the original so only the preview shows
   const hiddenId = drag?.active && drag.preview && (drag.kind === 'move' || drag.kind === 'resize') ? drag.block.id : null
 
@@ -386,6 +392,8 @@ export default function App() {
         focusTag={focusTag}
         onFocusTag={setFocusTag}
         weekCounts={weekCounts}
+        friendsDue={friends.overdue.length}
+        onFriends={() => setFriendsOpen(true)}
       >
         <UpdateNotice state={updater.state} canRestart={status.kind === 'saved'} onRestart={updater.restart} />
         <CloudButton cloud={cloud} />
@@ -499,6 +507,7 @@ export default function App() {
           onHideBottom={() => setTarget({ bottom: DEFAULT_TARGETS.bottom })}
           hitTestRef={hitTestRef}
           focusTag={drag?.active ? null : focusTag}
+          friendNames={friendNames}
           onEmptyDown={(e, date, minute) => beginDrag(e, { kind: 'create', date, anchor: minute })}
           onBlockDown={(e, block, mode) => {
             const hit = hitTestRef.current?.(e.clientX, e.clientY)
@@ -524,6 +533,7 @@ export default function App() {
           block={editing.block}
           isNew={editing.isNew}
           activities={data.activities}
+          friends={inTemplate ? [] : live(data.friends)}
           weekdayOnly={inTemplate}
           clashes={(dayEvents[dates.indexOf(editing.block.date)]?.timed ?? [])}
           onSave={(b, addToBank) => {
@@ -553,6 +563,16 @@ export default function App() {
           cancelLabel="Not now"
           actions={[{ label: 'Sync with Calendar', kind: 'primary', run: syncWeek }]}
           onClose={() => setSyncPromptDismissed(weekKey)}
+        />
+      )}
+      {friends.ping && <FriendsPing overdue={friends.ping} onClose={friends.closePing} onOpenList={() => setFriendsOpen(true)} />}
+      {friendsOpen && (
+        <FriendsPanel
+          statuses={friends.statuses}
+          onAdd={(name) => update((d) => addFriend(d, { id: uid(), name, added: today }))}
+          onChange={(id, change) => update((d) => changeFriend(d, id, change))}
+          onRemove={(id) => update((d) => removeFriend(d, id))}
+          onClose={() => setFriendsOpen(false)}
         />
       )}
       {confirming && <Confirm {...confirming} onClose={() => setConfirming(null)} />}

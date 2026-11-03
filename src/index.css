@@ -900,3 +900,54 @@ html, body { overscroll-behavior: none; }
 .phone-app .todo-list { overscroll-behavior: contain; }
 /* no double-tap zoom on the phone */
 .phone-app { touch-action: manipulation; }
+
+/* ---------- friends (components/Friends.tsx) ---------- */
+.friends-btn { width: 100%; justify-content: flex-start; background: var(--pink); }
+.friends-btn .badge.due, .phone-friends .badge.due { margin-left: auto; background: var(--coral); }
+.friend-disc {
+  display: inline-grid; place-items: center; flex-shrink: 0; color: var(--ink); font-weight: 800; line-height: 1;
+  border: 2px solid var(--ink); border-radius: 50%;
+}
+.modal-body.friends { gap: 14px; }
+.friends-intro { font-size: 14.5px; line-height: 1.45; opacity: 0.75; }
+.friend-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.friend-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--white); border: 2px solid var(--ink); border-radius: var(--r-control); }
+.friend-row.overdue { background: var(--clash-tint); }
+.friend-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.friend-name { padding: 0; border: none; background: none; color: var(--ink); font: 800 17px var(--font); text-align: left; overflow-wrap: anywhere; cursor: text; }
+.friend-name.static { cursor: default; }
+input.friend-edit { height: 38px; font-size: 16px; }
+.friend-seen { font-size: 12.5px; opacity: 0.7; }
+.friend-due { font-size: 12.5px; font-weight: 800; color: var(--clash-ink); }
+.friend-remind { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-top: 6px; font-size: 13.5px; font-weight: 600; }
+.friend-remind select { width: auto; height: 38px; padding: 0 36px 0 12px; font-size: 15px; }
+.friend-remove { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; padding: 0; border: none; background: none; color: var(--ink); opacity: 0.55; cursor: pointer; }
+.friend-remove:hover { opacity: 1; }
+.friends-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px; font-weight: 600; opacity: 0.6; }
+.pill.friend-pill { padding-left: 5px; }
+.pill.friend-pill.on { background: var(--pink); font-weight: 700; box-shadow: 2px 2px 0 var(--ink); }
+
+/* ---------- iPhone: friends button, compact sync, three tabs, month ---------- */
+.save-pill.phone-friends { background: var(--pink); }
+.save-pill.cloud.icon-only { width: 34px; padding: 0; justify-content: center; }
+.phone-tabs { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.phone-tabs button { position: relative; height: 58px; flex-direction: column; gap: 2px; font-size: 14px; }
+.phone-tabs button .badge { position: absolute; top: 5px; right: 8px; min-width: 20px; height: 20px; font-size: 11px; }
+
+.month { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 16px; }
+.month-dow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; text-align: center; font: 800 11.5px var(--font); letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.6; }
+.month-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 9px 8px; }
+/* each day stands out from the page and sinks when pressed */
+.month-day {
+  min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 7px 2px 8px;
+  color: var(--ink); background: var(--white); border: 2px solid var(--ink); border-radius: 12px; box-shadow: 3px 3px 0 var(--ink);
+  font: 800 18px var(--font); cursor: pointer; transition: transform 0.06s, box-shadow 0.06s;
+}
+.month-day:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+.month-day.past { background: var(--paper); }
+.month-day.past .month-num { opacity: 0.45; }
+.month-day.today { background: var(--lemon); }
+.month-day.selected { outline: 3px solid var(--grape); outline-offset: 2px; }
+.month-num { line-height: 1; }
+.month-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; max-width: 100%; }
+.month-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--c); border: 1.5px solid var(--ink); }

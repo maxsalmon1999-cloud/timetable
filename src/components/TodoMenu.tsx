@@ -228,9 +228,9 @@ export function TodoDay({ date, todos: list, plan, ticked, onChange: change, onT
   const reward = (row: HTMLElement) => {
     const box = row.querySelector<HTMLElement>('.todo-box')
     const doneNow = done + 1
-    sounds.tick(doneNow)
     if (box) tickPop(box, row)
     glint(row)
+    sounds.tick(doneNow)
     // after React has drawn the newly filled cell
     requestAnimationFrame(() => bump(meterRef.current?.children[doneNow - 1], 'scale(1.15,1.6)', 360))
     if (doneNow === total) {
@@ -264,7 +264,8 @@ export function TodoDay({ date, todos: list, plan, ticked, onChange: change, onT
     onPointerDown: (e: RPointerEvent) => {
       if (e.button !== 0) return
       setPressed(id)
-      sounds.press()
+      // only with a mouse: on iOS, audio started by a finger landing (not a finished tap) stays silent
+      if (e.pointerType === 'mouse') sounds.press()
     },
     onPointerUp: () => setPressed(null),
     onPointerLeave: () => setPressed(null),

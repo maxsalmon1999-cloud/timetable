@@ -50,6 +50,8 @@ interface Props {
   onBlockDown: (e: RPointerEvent, block: Block, mode: 'move' | 'resize') => void
   /** an activity she's holding or hovering in the sidebar: everything not tagged with it fades */
   focusTag?: string | null
+  /** friend id → name, for "With …" in the hover card */
+  friendNames?: Record<string, string>
 }
 
 /**
@@ -454,7 +456,7 @@ function useHover() {
 }
 
 /** Looks the hovered item up in the current data, so the card is never stale (and vanishes if it was undone away) */
-function HoverDetails({ target, blocks, days, dates, hiddenId, blank }: { target: HoverTarget } & Props) {
+function HoverDetails({ target, blocks, days, dates, hiddenId, blank, friendNames }: { target: HoverTarget } & Props) {
   const eventsOn = (day: number) => days[day] ?? { timed: [], allDay: [] }
   const { timed, allDay } = eventsOn(target.day)
   const date = dates[target.day]
@@ -462,7 +464,8 @@ function HoverDetails({ target, blocks, days, dates, hiddenId, blank }: { target
     const b = blocks.find((x) => x.id === target.id)
     if (!b || b.id === hiddenId) return null
     const clashes = eventsOn(dates.indexOf(b.date)).timed.filter((ev) => overlaps(b, ev))
-    return <BlockCard block={b} anchor={target.anchor} blank={blank} clashes={clashes} />
+    const withNames = (b.friends ?? []).map((id) => friendNames?.[id]).filter((n): n is string => !!n)
+    return <BlockCard block={b} anchor={target.anchor} blank={blank} clashes={clashes} friends={withNames} />
   }
   if (target.kind === 'event') {
     const ev = timed.find((x) => x.id === target.id)

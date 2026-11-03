@@ -25,6 +25,8 @@ interface Tagged {
 
 export interface Block extends Iconed, Tagged {
   id: string
+  /** friends who were (or will be) there: Friend ids. Not copied into templates or other weeks. */
+  friends?: string[]
   /** YYYY-MM-DD */
   date: string
   /** minutes from midnight */
@@ -58,6 +60,21 @@ export interface Todo {
   since?: string
 }
 
+/** Someone she wants to keep seeing ("Keep track of friends") */
+export interface Friend {
+  id: string
+  name: string
+  /** YYYY-MM-DD she added them: counts as the last time seen until a block with them has happened */
+  added: string
+  /** remind her once this many days have gone by without seeing them; missing = never */
+  remindDays?: number
+  /**
+   * Removed from her list. Kept (hidden) rather than deleted so an older app on another device, which doesn't know
+   * about friends, can't bring a deletion about by accident (see lib/syncModel.ts).
+   */
+  removed?: true
+}
+
 export interface AppData {
   /** 1 = original; 2 = pastel palette + icon fields; 3 = icons filled in from names; 4 = blocks tagged with their activity (see lib/migrate.ts) */
   version: 4
@@ -86,4 +103,8 @@ export interface AppData {
    * doc as of the last sync, for the three-way merge in lib/syncModel.ts. Missing when sync is off.
    */
   sync?: { uid: string; base: Record<string, string> }
+  /** her friends (including removed ones, hidden); optional, so no version bump */
+  friends?: Friend[]
+  /** the day (YYYY-MM-DD) the "haven't seen in a while" check last ran, so it pops up once a day on any device */
+  friendsChecked?: string
 }

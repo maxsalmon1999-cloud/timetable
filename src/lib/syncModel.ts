@@ -7,6 +7,8 @@
 //   d:<monday>:<day>:<id>   one of her to-dos (+ its position in that day's list)
 //   k:<monday>:<id>         a tick on a timetable block / calendar event that week
 //   s:<monday>    "this week is synced with Apple Calendar"
+//   f:<id>        a friend (removing one marks it removed: f: docs are never deleted, see KEEP below)
+//   x:friendsChecked   the day the "haven't seen in a while" check last ran
 //   w:<monday>    (old: a whole week's to-dos in one doc; read and then replaced by d:/k: docs, because two devices
 //                 editing the same week while apart lost one side's changes)
 // Each device keeps `sync.base`: a fingerprint of every doc as of its last sync. Comparing this device, the cloud and
@@ -14,7 +16,7 @@
 // only a doc edited on both sides since the last sync is decided, in this device's favour.
 // templateDraft and `sync` itself stay on this device.
 
-import type { Activity, AppData, Block, Template, Todo } from './types'
+import type { Activity, AppData, Block, Friend, Template, Todo } from './types'
 
 /** doc key → the doc's content as canonical JSON */
 export type Docs = Map<string, string>
@@ -59,6 +61,8 @@ export function toDocs(d: AppData): Docs {
     lists.forEach((list, day) => list.forEach((t, pos) => docs.set(`d:${w}:${day}:${enc(t.id)}`, stable({ ...t, pos }))))
   for (const [w, ticks] of Object.entries(d.todoTicks ?? {})) for (const id of ticks) docs.set(`k:${w}:${enc(id)}`, '1')
   for (const w of d.syncedWeeks ?? []) docs.set(`s:${w}`, '1')
+  for (const f of d.friends ?? []) docs.set(`f:${enc(f.id)}`, stable(f))
+  if (d.friendsChecked) docs.set('x:friendsChecked', stable(d.friendsChecked))
   return docs
 }
 
@@ -70,6 +74,8 @@ export function fromDocs(docs: Docs, local: AppData): AppData {
   const todos: Record<string, Todo[][]> = {}
   const todoTicks: Record<string, string[]> = {}
   const syncedWeeks: string[] = []
+  const friends: Friend[] = []
+  let friendsChecked: string | undefined
   const legacyWeeks: [string, { lists?: Todo[][]; ticks?: string[] }][] = []
   const items: Record<string, (Todo & { pos: number; day: number })[]> = {}
   const tickSets: Record<string, Set<string>> = {}
@@ -85,6 +91,8 @@ export function fromDocs(docs: Docs, local: AppData): AppData {
       if (kind === 'a') activities.push(v)
       else if (kind === 'b') blocks.push(v)
       else if (kind === 't') templates.push(v)
+      else if (kind === 'f') friends.push(v)
+      else if (kind === 'x' && parts[1] === 'friendsChecked') friendsChecked = v
     }
   }
   // old whole-week docs: keep any to-do or tick the per-item docs don't already have
@@ -106,7 +114,8 @@ export function fromDocs(docs: Docs, local: AppData): AppData {
   }
   blocks.sort(order(local.blocks.map((b) => b.id)))
   templates.sort(order(local.templates.map((t) => t.id)))
-  const { todos: _t, todoTicks: _k, syncedWeeks: _s, ...rest } = local // eslint-disable-line @typescript-eslint/no-unused-vars
+  friends.sort(order((local.friends ?? []).map((f) => f.id)))
+  const { todos: _t, todoTicks: _k, syncedWeeks: _s, friends: _f, friendsChecked: _c, ...rest } = local // eslint-disable-line @typescript-eslint/no-unused-vars
   return {
     ...rest,
     activities: activities.map(({ pos: _, ...a }) => a), // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -115,8 +124,18 @@ export function fromDocs(docs: Docs, local: AppData): AppData {
     ...(Object.keys(todos).length ? { todos } : {}),
     ...(Object.keys(todoTicks).length ? { todoTicks } : {}),
     ...(syncedWeeks.length ? { syncedWeeks: syncedWeeks.sort() } : {}),
+    ...(friends.length ? { friends } : {}),
+    ...(friendsChecked ? { friendsChecked } : {}),
   }
 }
+
+/**
+ * Docs this app never deletes from the cloud. Apps from before friends existed (v0.8.0 and older) don't know these
+ * kinds, so after reading them once they "delete" them on their next sync. Treating a doc missing from the cloud as
+ * lost (and putting it back) keeps her friends safe while an old app is still about. Removing a friend is a doc
+ * marked `removed`, never a deletion.
+ */
+const KEEP = (k: string) => k.startsWith('f:') || k.startsWith('x:')
 
 export interface Reconciled {
   /** her plans after the merge (the same object as `local` when nothing changed) */
@@ -142,7 +161,16 @@ export function reconcile(local: AppData, remote: Docs, base: Record<string, str
     const l = mine.get(k)
     const r = remote.get(k)
     const unchangedHere = (l === undefined ? undefined : hash(l)) === base?.[k]
-    if (unchangedHere) {
+    if (KEEP(k) && l !== undefined && r === undefined) {
+      // new here, or the cloud lost it (an older app dropped it): (re)upload
+      merged.set(k, l)
+      writes.set(k, l)
+    } else if (KEEP(k) && l === undefined && r !== undefined && !unchangedHere) {
+      // gone from this device (an undo of adding a friend): keep it in the cloud, marked removed
+      const gone = k.startsWith('f:') ? stable({ ...JSON.parse(r), removed: true }) : r
+      merged.set(k, gone)
+      if (gone !== r) writes.set(k, gone)
+    } else if (unchangedHere) {
       // only the cloud may have changed it (or deleted it)
       if (r !== undefined) merged.set(k, r)
     } else if (l !== undefined) {

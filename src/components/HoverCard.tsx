@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { CalendarBlankIcon, MapPinIcon, NotepadIcon, WarningIcon } from '@phosphor-icons/react'
+import { CalendarBlankIcon, MapPinIcon, NotepadIcon, UsersThreeIcon, WarningIcon } from '@phosphor-icons/react'
 import type { Block } from '../lib/types'
 import type { CalEvent } from '../lib/calendar'
 import { fmtDuration, fmtTime, fromISO, toISO } from '../lib/dates'
@@ -75,7 +75,7 @@ function Clashes({ with: items }: { with: Timed[] }) {
   ))
 }
 
-export function BlockCard({ block, anchor, blank, clashes }: { block: Block; anchor: Anchor; blank?: boolean; clashes: Timed[] }) {
+export function BlockCard({ block, anchor, blank, clashes, friends = [] }: { block: Block; anchor: Anchor; blank?: boolean; clashes: Timed[]; friends?: string[] }) {
   const title = block.title || 'Untitled'
   return (
     <HoverCard
@@ -87,6 +87,12 @@ export function BlockCard({ block, anchor, blank, clashes }: { block: Block; anc
       <div className="hover-when">
         {dayLabel(fromISO(block.date), blank)} · <span className="mono">{fmtTime(block.start)}–{fmtTime(block.end)} · {fmtDuration(block.end - block.start)}</span>
       </div>
+      {friends.length > 0 && (
+        <div className="hover-row">
+          <UsersThreeIcon size={15} weight="bold" />
+          <span>With {friends.join(', ')}</span>
+        </div>
+      )}
       <Clashes with={clashes} />
     </HoverCard>
   )

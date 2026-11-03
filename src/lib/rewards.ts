@@ -23,7 +23,11 @@ export function setSoundOn(on: boolean) {
 }
 
 let audio: AudioContext | null = null
-/** created lazily on the first gesture (browsers block audio before one) */
+/**
+ * Created lazily on the first gesture (browsers block audio before one). On iPhone/iPad that has to be a finished tap:
+ * a context started when a finger first touches stays silent, so the press sound is mouse-only (TodoMenu.tsx).
+ * iOS also mutes these sounds when the phone's ring/silent switch is on silent, like other app sounds.
+ */
 function ctx() {
   if (!soundOn()) return null
   try {
@@ -35,7 +39,16 @@ function ctx() {
   }
 }
 
-function tone(freq: number, { type = 'sine' as OscillatorType, ms = 160, gain = 0.1, at = 0, to }: { type?: OscillatorType; ms?: number; gain?: number; at?: number; to?: number } = {}) {
+function tone(freq: number, opts: { type?: OscillatorType; ms?: number; gain?: number; at?: number; to?: number } = {}) {
+  // a sound that can't play (no audio, a WebKit quirk) must never stop the visual rewards that follow it
+  try {
+    play(freq, opts)
+  } catch {
+    /* silent */
+  }
+}
+
+function play(freq: number, { type = 'sine' as OscillatorType, ms = 160, gain = 0.1, at = 0, to }: { type?: OscillatorType; ms?: number; gain?: number; at?: number; to?: number }) {
   const ac = ctx()
   if (!ac) return
   const t = ac.currentTime + at / 1000

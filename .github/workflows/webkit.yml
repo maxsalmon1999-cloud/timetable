@@ -1,0 +1,32 @@
+# Runs the web app in real Safari (WebKit: the same engine as the iPhone, iPad and Mac app) on one of GitHub's Macs
+# and checks things Chromium-based browser tests can't vouch for, such as the to-do tick rewards
+# (scripts/webkit-check.mjs). Runs on pushes to iphone-* branches and by hand.
+name: WebKit check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['iphone-*']
+
+permissions:
+  contents: read
+
+jobs:
+  safari:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Safari WebDriver and the dev server
+        run: |
+          sudo safaridriver --enable
+          safaridriver -p 4444 &
+          npx vite --port 1420 --strictPort &
+          for i in $(seq 1 60); do curl -sf http://localhost:1420/ >/dev/null && curl -sf http://localhost:4444/status >/dev/null && break; sleep 1; done
+      - name: Tick to-dos in Safari
+        run: node scripts/webkit-check.mjs
