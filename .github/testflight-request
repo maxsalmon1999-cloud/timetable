@@ -1,2 +1,3 @@
 # Change this file on main to build the iOS app and send it to TestFlight (.github/workflows/testflight.yml).
 2026-10-19: first iPhone build (universal iPad + iPhone app)
+2026-11-03: v0.9.0 again, after accepting Apple's updated Program License Agreement
