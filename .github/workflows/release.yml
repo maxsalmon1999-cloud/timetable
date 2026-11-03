@@ -1,7 +1,8 @@
 # Ships an update to her app from one of GitHub's Macs: the same `npm run release` Max runs locally
 # (bump version, universal build, sign, commit + tag on main, GitHub release with latest.json).
 #
-# Run it: GitHub → Actions → Release → Run workflow (or Claude triggers it).
+# Run it: GitHub → Actions → Release → Run workflow, or change .github/release-request on main (how a Claude session
+# releases: it can push, but not press Run workflow). That file's `bump:` and `notes:` lines are the inputs.
 # Needs repository secrets:
 #   TAURI_SIGNING_PRIVATE_KEY   the contents of ~/.tauri/timetable.key (signs updates)
 #   APPLE_CERTIFICATE           base64 of the Developer ID Application certificate exported as .p12
@@ -21,6 +22,9 @@ on:
         description: 'Release notes (optional)'
         required: false
         default: ''
+  push:
+    branches: [main]
+    paths: ['.github/release-request']
 
 permissions:
   contents: write
@@ -64,7 +68,13 @@ jobs:
           # inputs go through env, never pasted into the script, so notes can contain anything
           BUMP: ${{ inputs.bump }}
           NOTES: ${{ inputs.notes }}
+          EVENT: ${{ github.event_name }}
         run: |
+          if [ "$EVENT" = push ]; then
+            BUMP=$(sed -n 's/^bump: *//p' .github/release-request | head -1)
+            NOTES=$(sed -n 's/^notes: *//p' .github/release-request | head -1)
+          fi
+          echo "Releasing: ${BUMP:-patch}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          node scripts/release.mjs "$BUMP" "$NOTES"
+          node scripts/release.mjs "${BUMP:-patch}" "$NOTES"

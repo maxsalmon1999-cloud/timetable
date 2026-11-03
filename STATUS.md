@@ -36,7 +36,7 @@ Core ideas:
 | `npm run app:dev` | Tauri window with HMR |
 | `npm run app:build` | release `.app` + `.dmg` in `src-tauri/target/release/bundle/{macos,dmg}/` |
 | `npm run release [-- patch\|minor\|major\|x.y.z "notes"]` | ship an update to her (see "Releases & auto-update") |
-| GitHub → Actions → **Release** → Run workflow | the same release, built on GitHub's Mac (no Max's Mac needed) |
+| GitHub → Actions → **Release** → Run workflow, or change `.github/release-request` on main (`bump:` / `notes:` lines) | the same release, built on GitHub's Mac (no Max's Mac needed); TestFlight follows |
 | `npx tsc -b` / `npx oxlint` | typecheck / lint |
 | Change `.github/testflight-request` on main (or Actions → **TestFlight** → Run workflow) | build the iOS app and send it to TestFlight |
 | GitHub → Actions → **WebKit check** (also on push to `iphone-*`) | real Safari ticks to-dos and checks the rewards are drawn |
@@ -489,3 +489,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-11-03**: Keep track of friends (all screens: list with reminders, "With" on blocks, name-match check, daily
   "time to catch up?" pop-up; sync never deletes friend docs, for older apps). iPhone Month tab (raised day buttons,
   months by ‹ › / swipe). Tick sparkles now show (gently) with Reduce Motion on, found with the new WebKit check.
+- **2026-11-03**: Release can also be started by changing `.github/release-request` on main (sessions get 403 on
+  workflow_dispatch). Used it to release v0.9.0 (friends, iPhone month view, sparkles with Reduce Motion).

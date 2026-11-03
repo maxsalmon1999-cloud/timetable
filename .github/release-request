@@ -1,0 +1,3 @@
+# Change this file on main to release the Mac app (and then TestFlight) from GitHub's Mac (.github/workflows/release.yml).
+bump: minor
+notes: Keep track of friends (all devices), iPhone month view, gentler tick sparkles with Reduce Motion
