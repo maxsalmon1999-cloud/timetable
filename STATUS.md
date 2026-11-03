@@ -15,7 +15,8 @@ Core ideas:
 3. **Week templates**: save a "regular week" and apply it to upcoming weeks (replace or add), or build one from a
    blank week ("Create a template").
 4. **Apple Calendar integration** (read-only): per-week "Sync with Calendar"; events shown on the grid, clashes highlighted.
-5. **iPhone**: the same iOS app shows one day at a time (Day tab + To-do tab, ‹ › between days) instead of the week.
+5. **iPhone**: the same iOS app shows one day at a time (Day / To-do / Month tabs, ‹ › between days) instead of the week.
+6. **Keep track of friends** (all screens): a friends list, friends tagged on blocks, and a daily "time to catch up?" pop-up.
 
 ## Stack
 
@@ -38,6 +39,7 @@ Core ideas:
 | GitHub → Actions → **Release** → Run workflow | the same release, built on GitHub's Mac (no Max's Mac needed) |
 | `npx tsc -b` / `npx oxlint` | typecheck / lint |
 | Change `.github/testflight-request` on main (or Actions → **TestFlight** → Run workflow) | build the iOS app and send it to TestFlight |
+| GitHub → Actions → **WebKit check** (also on push to `iphone-*`) | real Safari ticks to-dos and checks the rewards are drawn |
 | GitHub → Actions → **Simulator check** (also on push to `iphone-*`) | iPhone + iPad simulators on GitHub's Mac, tapped through; screenshots on branch `simulator-screenshots` |
 
 ## Code map
@@ -50,6 +52,9 @@ src/
                           To-do tab (TodoDay), + button, bottom tabs, block editor/event sheets, keyboard inset (--kb)
   lib/plan.ts             data changes both screens make: setDayTodos, toggleTick, saveBlock, scheduledOn, countDay
   lib/useToday.ts         today's ISO date, kept current across midnight / sleep
+  lib/friends.ts          friends: statuses (last seen / next / overdue), namedIn(title) name matching, add/change/remove
+  lib/useFriends.ts       statuses for the screens + the once-a-day overdue pop-up (AppData.friendsChecked)
+  components/Friends.tsx  FriendsPanel (list), FriendsPing (daily pop-up), FriendChips ("With" in the block editor), FriendDisc
   lib/types.ts            Activity, Block, Template, TemplateBlock (all with optional icon/iconWeight), AppData (version: 2)
   lib/store.ts            useAppData(): load (→ migrate) / save + undo/redo history (reducer: past/present/future), student seed
   lib/migrate.ts          migrate(raw): bring any older saved file up to date (v1→v2 colours, v2→v3 icons). MUST open every old file
@@ -250,6 +255,45 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   event sheet, quick-add ×2, tick + rewards, swipe, delete + undo, no console errors). Mac to-do pad re-checked after the
   TodoDay refactor. Not yet on a real iPhone (swipe feel, sign-in).
 
+### Keep track of friends (2026-11-03)
+- `AppData.friends?: Friend[]` (`{id, name, added, remindDays?, removed?}`), `Block.friends?: string[]` (friend ids),
+  `AppData.friendsChecked?: string` (day the overdue check last ran). Optional fields, no version bump.
+- **Seen** = a block tagged with them that has ended; **seeing them** = a tagged block still to come. Days since = since
+  the last seen block, or since `added` if never. **Overdue** = has a reminder, nothing planned, days since ≥ remindDays.
+- Friends list (Mac/iPad: pink **Friends** button at the top of the sidebar foot, coral count when someone's overdue;
+  iPhone: **Friends** pill in the strip): add, tap a name to rename, "Remind me after" never / 1–3 weeks / 1–3 months,
+  × to remove (confirm). Overdue friends first, pink-red row, "Time to catch up".
+- Block editor: **With** chips (any screen). On save, friends named in the title (full or first name, whole word,
+  case/accent-insensitive: `namedIn`) who aren't ticked get a pop-up "With Aoi?" → "Yes, tag Aoi" / "No". Only names new
+  in that edit ask, so re-saving an old block doesn't. Templates and "copy last week" don't copy friends (`look()`).
+- Daily pop-up: the first time the app opens each day (any device: `friendsChecked` syncs), if anyone is overdue,
+  "Time to catch up?" lists them (OK / Friends list). The check is a silent update (no undo step). On the Mac it waits
+  its turn with the calendar sync prompt. The Mac hover card shows "With Aoi, Sam".
+- **Sync safety with older apps**: friends are `f:<id>` docs plus `x:friendsChecked`. Apps up to v0.8.0 don't know these
+  kinds and would delete them from the cloud on their second sync, which would then delete them on the new devices too.
+  So `reconcile` never deletes `f:`/`x:` docs (KEEP): a missing one is re-uploaded, removing a friend marks it `removed`,
+  and an undone add becomes a `removed` doc. Tests cover the old-app wipe, removal and undo. Blocks keep their
+  `friends` through old apps (they copy unknown block fields).
+- Calendar events can't be tagged (read-only, not stored); only her own blocks count. Possible follow-up.
+
+### iPhone month view (2026-11-03)
+- **Month** tab (third tab; tabs are now stacked icon-over-label). Header shows the month and year, "This month" tag or
+  "Go to this month"; ‹ › and swipes move a month. Opens on the month of the day she was on.
+- A grid of raised white day buttons (ink border, 3px hard shadow, sinks when pressed), only the month's own days,
+  weekday initials above, rows share the height so nothing is cramped. Today lemon, the day she's on outlined in grape,
+  past days paper with a faded number, up to four dots in the colours of that day's blocks. Tap → that day on the Day tab.
+- Strip: compact sync button (icon only once signed in), Friends pill, then Calendar (Day) or sound (To-do). On phones
+  ≤360px wide the Friends pill is icon + count only. Checked at iPhone 13 and SE sizes, no overflow.
+
+### Tick rewards on iPhone (2026-11-03)
+- Max saw no sparkles or sound on the phone. A real-Safari check (**WebKit check** workflow, `scripts/webkit-check.mjs`,
+  safaridriver on GitHub's Mac) showed Reduce Motion on there, and the stars and light sweep skipped by design. Likely the
+  same on her iPhone (Settings → Accessibility → Motion → Reduce Motion). Now with Reduce Motion the reward still shows,
+  calmly: a soft glow and stars fading in place (no spin, sweep, ring, spring or confetti).
+- Sound: effects now run before sounds and a sound error can't stop them; on touch the press click is skipped so audio
+  starts on the finished tap (iOS keeps audio started on touch-down silent). iOS mutes these sounds when the side
+  switch is on silent, like other app sounds; deliberately not overridden (that would also stop her music).
+
 ### Data model notes
 - `Block` stores its own `title`/`color` (copied from the activity), **not** an activity reference,
   so editing or deleting an activity never changes existing blocks.
@@ -442,3 +486,6 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-10-19**: Her TestFlight still offered build 0.8.0.7 (iPad only, 6 Oct), so her iPhone said "can only be tested on
   an iPad". TestFlight now also runs when `.github/testflight-request` changes on main (sessions can push but get 403 on
   workflow_dispatch); used it to start the first iPhone build.
+- **2026-11-03**: Keep track of friends (all screens: list with reminders, "With" on blocks, name-match check, daily
+  "time to catch up?" pop-up; sync never deletes friend docs, for older apps). iPhone Month tab (raised day buttons,
+  months by ‹ › / swipe). Tick sparkles now show (gently) with Reduce Motion on, found with the new WebKit check.

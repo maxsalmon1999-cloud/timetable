@@ -51,6 +51,7 @@ for (const layout of ['phone', 'mac']) {
       ticked: !!row?.querySelector('.todo-box.on'),
       stars: row ? row.querySelectorAll('svg path[d^="M12 1"]').length : -1,
       sweeps: row ? [...row.children].filter(c => c.style && c.style.overflow === 'hidden').length : -1,
+      glows: row ? [...row.children].filter(c => c.style && c.style.background.includes('255, 230, 128')).length : -1,
       animations: document.getAnimations ? document.getAnimations().length : -1,
       audio: typeof AudioContext,
       errors: window.__errs,
@@ -58,7 +59,8 @@ for (const layout of ['phone', 'mac']) {
   console.log(layout, JSON.stringify(r))
   report(`${layout}: tick registered`, r.ticked)
   report(`${layout}: stars drawn in the row`, r.stars >= 2, `${r.stars} stars`)
-  report(`${layout}: light sweep drawn`, r.sweeps >= 1)
+  // Reduce Motion swaps the moving light sweep for a glow in place
+  report(`${layout}: ${reduced ? 'glow' : 'light sweep'} drawn`, reduced ? r.glows >= 1 : r.sweeps >= 1)
   report(`${layout}: animations running`, r.animations > 0, `${r.animations}`)
   report(`${layout}: no script errors`, !r.errors.length, r.errors.join(' | '))
 }
