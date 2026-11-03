@@ -111,7 +111,7 @@ phone = device("iPhone")
 launch(phone)
 w, h = screen(phone)
 fab = (w - 59, h - 145)  # the + over the list
-day_tab, todo_tab = (w * 0.26, h - 61), (w * 0.74, h - 61)
+day_tab, todo_tab, month_tab = (w * 0.18, h - 63), (w * 0.5, h - 63), (w * 0.82, h - 63)
 shot(phone, "phone-01-day")
 tap(phone, *fab)  # Day tab + → new block
 shot(phone, "phone-02-new-block")
@@ -132,6 +132,8 @@ tap(phone, *day_tab)
 shot(phone, "phone-09-next-day-timetable")
 swipe(phone, w * 0.1, h * 0.5, w * 0.85, h * 0.5 + 10)  # ← back
 shot(phone, "phone-10-swiped-back")
+tap(phone, *month_tab)
+shot(phone, "phone-11-month")
 
 # ---------- iPad: still the week ----------
 ipad = device("iPad")
