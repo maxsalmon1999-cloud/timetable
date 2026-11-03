@@ -142,11 +142,23 @@ export function tickPop(box: HTMLElement, row: HTMLElement) {
   )
 }
 
-/** a light sweeps across el, then stars pop along it. Drawn inside el (position: relative) so it moves with it. */
+/**
+ * A light sweeps across el, then stars pop along it. Drawn inside el (position: relative) so it moves with it.
+ * With Reduce Motion on (an iPhone setting many people use) it's still there, but still: a soft glow and stars that
+ * fade in and out where they are, nothing moving across the screen.
+ */
 export function glint(el: HTMLElement, stars = 2) {
-  if (reducedMotion()) return
+  const calm = reducedMotion()
   const layer = el
   const r = within(layer, el)
+  if (calm) {
+    const glow = spawn(layer, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px`, borderRadius: '12px', background: 'rgba(255,230,128,.55)', opacity: '0' })
+    vanish(glow, glow.animate([{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' }))
+  } else sweep(layer, r)
+  calmStars(layer, r, stars, calm)
+}
+
+function sweep(layer: HTMLElement, r: { x: number; y: number; w: number; h: number }) {
   const clip = spawn(layer, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px`, borderRadius: '12px', overflow: 'hidden' })
   const band = document.createElement('div')
   Object.assign(band.style, {
@@ -164,24 +176,30 @@ export function glint(el: HTMLElement, stars = 2) {
       easing: 'cubic-bezier(.5,0,.3,1)',
     }),
   )
+}
+
+/** stars along el: popping and spinning, or (calm) fading in and out in place */
+function calmStars(layer: HTMLElement, r: { x: number; y: number; w: number; h: number }, stars: number, calm: boolean) {
   const spots = stars <= 2 ? [0.55, 0.8] : Array.from({ length: stars }, (_, i) => 0.3 + (0.7 * i) / (stars - 1))
   spots.forEach((at, i) => {
     const size = 14
     const star = spawn(
       layer,
-      { left: `${r.x + r.w * Math.min(at, 0.97) - size / 2}px`, top: `${r.y + (i % 2 ? r.h * 0.75 : r.h * 0.2) - size / 2}px`, width: `${size}px`, height: `${size}px`, transform: 'scale(0)' },
+      { left: `${r.x + r.w * Math.min(at, 0.97) - size / 2}px`, top: `${r.y + (i % 2 ? r.h * 0.75 : r.h * 0.2) - size / 2}px`, width: `${size}px`, height: `${size}px`, ...(calm ? { opacity: '0' } : { transform: 'scale(0)' }) },
       `<svg viewBox="0 0 24 24" width="${size}" height="${size}"><path d="${STAR}" fill="${i % 2 ? '#ffb8d6' : '#ffe680'}" stroke="#211c33" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
     )
     vanish(
       star,
-      star.animate(
-        [
-          { transform: 'scale(0) rotate(-45deg)' },
-          { transform: 'scale(1.2) rotate(15deg)', offset: 0.45 },
-          { transform: 'scale(0) rotate(90deg)' },
-        ],
-        { duration: 480, delay: 200 + i * 110, easing: 'ease-out', fill: 'backwards' },
-      ),
+      calm
+        ? star.animate([{ opacity: 0 }, { opacity: 1, offset: 0.35 }, { opacity: 0 }], { duration: 700, delay: 120 + i * 110, easing: 'ease-out', fill: 'backwards' })
+        : star.animate(
+            [
+              { transform: 'scale(0) rotate(-45deg)' },
+              { transform: 'scale(1.2) rotate(15deg)', offset: 0.45 },
+              { transform: 'scale(0) rotate(90deg)' },
+            ],
+            { duration: 480, delay: 200 + i * 110, easing: 'ease-out', fill: 'backwards' },
+          ),
     )
   })
 }

@@ -34,16 +34,17 @@ for (const layout of ['phone', 'mac']) {
   await run(`window.__errs = []; addEventListener('error', e => __errs.push(String(e.message))); addEventListener('unhandledrejection', e => __errs.push('rejection: ' + e.reason))`)
   if (layout === 'phone') await run(`document.querySelectorAll('.phone-tabs button')[1].click()`)
   else {
-    await run(`const p = [...document.querySelectorAll('.modal-backdrop')]; p.forEach(b => b.click())`) // the calendar prompt
+    await run(`[...document.querySelectorAll('.modal .btn')].find(b => b.textContent.includes('Not now'))?.click()`) // the calendar prompt
     await run(`document.querySelector('button[title="To-do list"]').click()`)
   }
   await sleep(700)
   const reduced = await run(`return matchMedia('(prefers-reduced-motion: reduce)').matches`)
-  report(`${layout}: reduced motion is off in this Safari`, !reduced)
+  // GitHub's Macs have Reduce Motion on; iPhones often do too. Either way the stars must be drawn (gently if so).
+  console.log(`${layout}: Reduce Motion is ${reduced ? 'on' : 'off'} in this Safari`)
   // a real click through WebDriver (pointer events + click), on the first box
   const el = await call('POST', s('/element'), { using: 'css selector', value: '.todo-item.own .todo-tick' })
   await call('POST', s(`/element/${Object.values(el)[0]}/click`), {})
-  await sleep(260) // stars are mid-flight (200ms delay + 480ms)
+  await sleep(300) // stars are mid-flight (120–200ms delay, then 480–700ms)
   const r = await run(`
     const row = document.querySelector('.todo-item.own')
     return {

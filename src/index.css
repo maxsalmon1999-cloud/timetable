@@ -951,3 +951,8 @@ input.friend-edit { height: 38px; font-size: 16px; }
 .month-num { line-height: 1; }
 .month-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; max-width: 100%; }
 .month-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--c); border: 1.5px solid var(--ink); }
+.phone-strip .save-pill { white-space: nowrap; flex-shrink: 0; }
+/* iPhone SE and other narrow phones: the Friends button is just its icon (and count) so the strip fits */
+@media (max-width: 360px) {
+  .phone-friends .pill-label { display: none; }
+}

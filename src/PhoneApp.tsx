@@ -283,9 +283,9 @@ export default function PhoneApp() {
 
       <div className="phone-strip">
         <CloudButton cloud={cloud} compact />
-        <button className="save-pill phone-friends" onClick={() => setFriendsOpen(true)}>
+        <button className="save-pill phone-friends" aria-label="Friends" onClick={() => setFriendsOpen(true)}>
           <UsersThreeIcon size={18} weight="bold" />
-          Friends
+          <span className="pill-label">Friends</span>
           {friends.overdue.length > 0 && <span className="badge mono due">{friends.overdue.length}</span>}
         </button>
         <span className="phone-strip-gap" />
@@ -489,9 +489,9 @@ function CalendarPill({ synced, state, onClick }: { synced: boolean; state: Sync
   const p = { size: 18, weight: 'bold' as const }
   if (!synced)
     return (
-      <button className="save-pill phone-cal" onClick={onClick}>
+      <button className="save-pill phone-cal" onClick={onClick} title="Show this week’s calendar events">
         <CalendarPlusIcon {...p} />
-        Show calendar
+        Calendar
       </button>
     )
   if (state.kind === 'no-access' || state.kind === 'error')
