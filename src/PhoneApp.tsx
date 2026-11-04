@@ -299,7 +299,6 @@ export default function PhoneApp() {
             <MonthView
               month={month}
               today={today}
-              selected={date}
               blocks={data.blocks}
               onPick={(iso) => {
                 goTo(iso)
@@ -438,10 +437,11 @@ export default function PhoneApp() {
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /**
- * A month of days, each a button that stands out from the page (press it to open that day). Only the month's own
- * days are drawn; each shows up to four dots in the colours of what's planned.
+ * A month of days, each a round button that sinks onto its shadow when pressed and bounces back (press it to open that
+ * day). Only the month's own days are drawn. Colours as in the week: today yellow, a day with plans in its first
+ * block's colour, otherwise white.
  */
-function MonthView({ month, today, selected, blocks, onPick }: { month: string; today: string; selected: string; blocks: Block[]; onPick: (iso: string) => void }) {
+function MonthView({ month, today, blocks, onPick }: { month: string; today: string; blocks: Block[]; onPick: (iso: string) => void }) {
   const first = fromISO(month)
   const lead = (first.getDay() + 6) % 7
   const count = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
@@ -463,19 +463,16 @@ function MonthView({ month, today, selected, blocks, onPick }: { month: string; 
         {Array.from({ length: count }, (_, i) => {
           const iso = prefix + String(i + 1).padStart(2, '0')
           const planned = (byDay.get(iso) ?? []).sort((a, b) => a.start - b.start)
+          const fill = iso === today ? undefined : planned[0]?.color
           return (
             <button
               key={iso}
-              className={'month-day' + (iso === today ? ' today' : '') + (iso === selected ? ' selected' : '') + (iso < today ? ' past' : '')}
+              className={'month-day' + (iso === today ? ' today' : '') + (iso < today ? ' past' : '')}
+              style={fill ? { background: fill } : undefined}
               aria-label={`${weekdayName(iso)} ${dayMonth(iso)}${planned.length ? `, ${planned.length} planned` : ''}`}
               onClick={() => onPick(iso)}
             >
               <span className="month-num">{i + 1}</span>
-              <span className="month-dots" aria-hidden>
-                {planned.slice(0, 4).map((b) => (
-                  <span key={b.id} style={{ ['--c' as string]: b.color }} />
-                ))}
-              </span>
             </button>
           )
         })}

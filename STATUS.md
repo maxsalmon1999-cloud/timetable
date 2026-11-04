@@ -279,9 +279,11 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 ### iPhone month view (2026-11-03)
 - **Month** tab (third tab; tabs are now stacked icon-over-label). Header shows the month and year, "This month" tag or
   "Go to this month"; ‹ › and swipes move a month. Opens on the month of the day she was on.
-- A grid of raised white day buttons (ink border, 3px hard shadow, sinks when pressed), only the month's own days,
-  weekday initials above, rows share the height so nothing is cramped. Today lemon, the day she's on outlined in grape,
-  past days paper with a faded number, up to four dots in the colours of that day's blocks. Tap → that day on the Day tab.
+- Days are round 44px "coin" buttons (2026-11-04, chosen by Max from the "Month day buttons" design canvas, round 2
+  option 2): ink border, hard shadow straight underneath; pressing sinks it onto the shadow and letting go springs it back
+  a little past, then it settles (cubic-bezier(.3,1.9,.45,1); Reduce Motion: no overshoot). Colours: today lemon, a day
+  with plans its first block's colour, otherwise white (past: paper, faded number). No dots, no selection ring.
+  Only the month's own days; tap → that day on the Day tab.
 - Strip: compact sync button (icon only once signed in), Friends pill, then Calendar (Day) or sound (To-do). On phones
   ≤360px wide the Friends pill is icon + count only. Checked at iPhone 13 and SE sizes, no overflow.
 
@@ -496,3 +498,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   'com.maxsalmon.timetable'": Apple's updated Program License Agreement wasn't accepted. Max accepted it at
   developer.apple.com/account; the re-run (via `.github/testflight-request`) uploaded build 0.9.0.11 with no errors.
   Lesson: that export error means an agreement is waiting in the Apple Developer account, not a code problem.
+- **2026-11-04**: iPhone month view: day buttons are now bouncing round coins in their first block's colour (no dots,
+  no ring), picked from a design canvas of 10 alternatives. Sent to TestFlight.
