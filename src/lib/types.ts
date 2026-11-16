@@ -84,6 +84,11 @@ export interface AppData {
   /** Monday (YYYY-MM-DD) of each week she chose to sync with Apple Calendar */
   syncedWeeks?: string[]
   /**
+   * Apple Calendar is shown on every week (this device only, as Calendar access is per device; never synced).
+   * Older versions switched it on week by week (`syncedWeeks`); any synced week also counts as on.
+   */
+  calendarOn?: boolean
+  /**
    * A template being built from scratch ("Create a template"). While present, the grid shows a blank
    * week and every block edit goes here instead of `blocks`. Dates are placeholders: TEMPLATE_DATES.
    */

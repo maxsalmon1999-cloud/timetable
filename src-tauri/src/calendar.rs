@@ -55,7 +55,20 @@ mod imp {
     use objc2_core_graphics::{CGColor, CGColorRenderingIntent, CGColorSpace, kCGColorSpaceSRGB};
     use objc2_event_kit::{EKAuthorizationStatus, EKCalendarType, EKEntityType, EKEventStore};
     use objc2_foundation::{NSArray, NSDate, NSError, NSString};
-    use std::sync::mpsc;
+    use std::sync::{Mutex, MutexGuard, OnceLock, mpsc};
+
+    /// One event store for the life of the app, as Apple advises: creating one is slow, and a fresh store may not
+    /// have loaded her calendars yet. (Making a new one per refresh sometimes read as "no events" and wiped the week.)
+    struct Shared(Retained<EKEventStore>);
+    // SAFETY: the store is only ever used under the mutex, by one thread at a time
+    unsafe impl Send for Shared {}
+    static STORE: OnceLock<Mutex<Shared>> = OnceLock::new();
+    fn store() -> MutexGuard<'static, Shared> {
+        STORE
+            .get_or_init(|| Mutex::new(Shared(unsafe { EKEventStore::new() })))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
 
     pub fn status() -> &'static str {
         let s = unsafe { EKEventStore::authorizationStatusForEntityType(EKEntityType::Event) };
@@ -73,7 +86,8 @@ mod imp {
         if status() == "granted" {
             return true;
         }
-        let store = unsafe { EKEventStore::new() };
+        let shared = store();
+        let store = &shared.0;
         let (tx, rx) = mpsc::channel();
         let block = RcBlock::new(move |granted: Bool, _err: *mut NSError| {
             let _ = tx.send(granted.as_bool());
@@ -88,7 +102,11 @@ mod imp {
             }
         }
         // blocks this worker thread (not the UI) until she answers the prompt
-        rx.recv().unwrap_or(false)
+        let granted = rx.recv().unwrap_or(false);
+        if granted {
+            unsafe { store.reset() } // reload now that it may read her calendars
+        }
+        granted
     }
 
     /// the calendar's colour as #RRGGBB (CGColor works on both the Mac and the iPad)
@@ -111,8 +129,11 @@ mod imp {
         if status() != "granted" {
             return Err("no-access".into());
         }
+        let shared = store();
+        let store = &shared.0;
         unsafe {
-            let store = EKEventStore::new();
+            // pick up changes from iCloud / Google / Exchange if they're due
+            store.refreshSourcesIfNecessary();
             // everything except the auto-generated Birthdays calendar
             let calendars: Vec<_> = store
                 .calendarsForEntityType(EKEntityType::Event)
@@ -120,7 +141,8 @@ mod imp {
                 .filter(|c| c.r#type() != EKCalendarType::Birthday)
                 .collect();
             if calendars.is_empty() {
-                return Ok(vec![]);
+                // not loaded yet (or none at all): say so, so the app keeps what it last showed rather than wiping it
+                return Err("no-calendars".into());
             }
             let calendars = NSArray::from_retained_slice(&calendars);
             let start = NSDate::dateWithTimeIntervalSince1970(start_ms / 1000.0);

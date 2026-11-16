@@ -120,7 +120,8 @@ export default function App() {
     [data, draft, dates],
   )
   const weekKey = inTemplate ? 'template' : dates[0]
-  const synced = !inTemplate && !!data?.syncedWeeks?.includes(weekKey)
+  // once she's turned Calendar on, every week shows it (older versions asked week by week)
+  const synced = !inTemplate && (!!data?.calendarOn || !!data?.syncedWeeks?.length)
   const cal = useCalendarSync(weekStart, synced)
   const updater = useUpdater()
 
@@ -161,7 +162,8 @@ export default function App() {
       return
     }
     if (synced) cal.refresh()
-    else update((d) => ({ ...d, syncedWeeks: [...(d.syncedWeeks ?? []), weekKey] }))
+    // syncedWeeks too, so devices still on an older version show this week
+    else update((d) => ({ ...d, calendarOn: true, syncedWeeks: [...new Set([...(d.syncedWeeks ?? []), weekKey])] }))
   }
 
   // ---------- data operations ----------
@@ -558,8 +560,8 @@ export default function App() {
       )}
       {showSyncPrompt && (
         <Confirm
-          title="Sync this week with Apple Calendar?"
-          message="Bring in this week’s events from your Calendar so you can plan around them. Anything added to your Calendar later in the week will appear here too."
+          title="Show your Apple Calendar here?"
+          message="Your Calendar events appear on every week so you can plan around them, and anything you add or change in Calendar shows up here by itself."
           cancelLabel="Not now"
           actions={[{ label: 'Sync with Calendar', kind: 'primary', run: syncWeek }]}
           onClose={() => setSyncPromptDismissed(weekKey)}

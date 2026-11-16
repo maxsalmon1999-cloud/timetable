@@ -503,3 +503,11 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
 - **2026-11-16**: Password hint. Signed in: "Password hint" field in the Sync window (≤120 chars, saved/removed with Save). Signed out: a wrong password shows "Your hint: …", and "Show hint" fetches it for the typed email. Stored at Firestore `hints/<sha256(lowercased email)>` = {hint, uid, at}; public read, only the owner (uid) may create/update/delete (`firestore.rules`). Emulator-verified (save, wrong-password hint, unknown email, unauthenticated overwrite/delete → 403). Needs the new rules published in the Firebase console before release.
 - **2026-11-16**: Calendar events (grid, all-day row, to-do chips) are outlines: paper fill, border = calendar colour deepened toward ink (82%), text = 50% toward ink, no stripes, no shadow (Max picked option C from a mock-up of tint / side bar / outline / ghost).
 - **2026-11-16**: **Released v0.10.0** (outline calendar events + password hint). TestFlight build uploaded (workflow_run). Hint saving needs the hints rules published in the Firebase console.
+- **2026-11-16**: Calendar events vanishing at random, fixed three ways. (1) `calendar.rs` keeps one long-lived `EKEventStore`
+  (static, under a mutex) instead of a new one per refresh: a fresh store sometimes hadn't loaded her calendars and read as
+  "no events"; it now calls `refreshSourcesIfNecessary` before each read, `reset` after access is granted, and returns
+  `Err("no-calendars")` rather than an empty list when no calendars are loaded. (2) `useCalendarSync` never wipes on a blip:
+  no-access, errors and "no-calendars" keep the week's last events; a week that had events coming back empty is re-read after
+  4 s before it's believed. (3) Calendar is one device-local switch, `AppData.calendarOn` (not synced, as access is per
+  device): once on, every week shows Calendar; any `syncedWeeks` entry also counts as on; enabling still adds the week to
+  `syncedWeeks` for older app versions. Prompt now "Show your Apple Calendar here?".

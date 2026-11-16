@@ -19,24 +19,40 @@ export function useCalendarSync(weekStart: Date, synced: boolean) {
   // results are tagged with their week so a stale week's events are never shown
   const [result, setResult] = useState<{ week: number; events: CalEvent[]; state: SyncState } | null>(null)
   const request = useRef(0)
+  /** how many events the last confirmed read of a week found */
+  const lastCount = useRef({ week: 0, count: 0 })
   const week = weekStart.getTime()
 
   const refresh = useCallback(async () => {
     const id = ++request.current
     const current = () => id === request.current
+    // what's on screen for this week: blips never wipe it, only a confirmed answer replaces it
+    const keep = (prev: typeof result) => (prev?.week === week ? prev.events : [])
     try {
       if ((await accessStatus()) !== 'granted') {
-        if (current()) setResult({ week, events: [], state: { kind: 'no-access' } })
+        if (current()) setResult((prev) => ({ week, events: keep(prev), state: { kind: 'no-access' } }))
         return
       }
-      const events = await fetchEvents(new Date(week))
-      if (current()) setResult({ week, events, state: { kind: 'ok', at: new Date() } })
+      let events = await fetchEvents(new Date(week))
+      // a week that had events coming back empty is more likely Calendar still loading than her deleting them all:
+      // look again shortly before believing it
+      if (!events.length && lastCount.current.week === week && lastCount.current.count > 0) {
+        await new Promise((r) => setTimeout(r, 4000))
+        if (!current()) return
+        events = await fetchEvents(new Date(week))
+      }
+      if (current()) {
+        lastCount.current = { week, count: events.length }
+        setResult({ week, events, state: { kind: 'ok', at: new Date() } })
+      }
     } catch (e) {
-      // keep showing what we last had for this week
-      if (current())
-        setResult((prev) => ({ week, events: prev?.week === week ? prev.events : [], state: { kind: 'error', message: String(e) } }))
+      if (!current()) return
+      // Calendar hasn't loaded her calendars yet: keep showing what we had, quietly, and try again on the next round
+      if (String(e).includes('no-calendars'))
+        setResult((prev) => ({ week, events: keep(prev), state: prev?.week === week ? prev.state : { kind: 'loading' } }))
+      else setResult((prev) => ({ week, events: keep(prev), state: { kind: 'error', message: String(e) } }))
     }
-  }, [week])
+  }, [week]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     request.current++ // drop results from any previous week still in flight
