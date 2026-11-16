@@ -114,3 +114,35 @@ export function friendlyError(e: unknown): string {
   }
   return known[code] ?? String((e as Error)?.message ?? e)
 }
+
+// ---------- password hint ----------
+// Readable before signing in (that's the point), so it's filed under a SHA-256 of the email rather than the email or
+// the account id, and it holds only what she chose to write. Anyone who types her email can read it, like a Mac's login
+// hint: the app asks for a clue, never the password. Rules: firestore.rules → /hints/{id}.
+
+const MAX_HINT = 120
+
+async function hintId(email: string) {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.trim().toLowerCase()))
+  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** her hint for this email, or null (works signed out) */
+export async function getHint(email: string): Promise<string | null> {
+  if (!email.trim()) return null
+  const { fs, db } = await cloud()
+  const snap = await fs.getDoc(fs.doc(db, 'hints', await hintId(email)))
+  const hint = snap.exists() ? snap.get('hint') : null
+  return typeof hint === 'string' && hint.trim() ? hint : null
+}
+
+/** save (or with an empty hint, remove) the signed-in account's hint */
+export async function setHint(hint: string) {
+  const { fs, db, a } = await cloud()
+  const user = a.currentUser
+  if (!user?.email) throw new Error('Sign in first.')
+  const ref = fs.doc(db, 'hints', await hintId(user.email))
+  const text = hint.trim().slice(0, MAX_HINT)
+  if (!text) await fs.deleteDoc(ref)
+  else await fs.setDoc(ref, { hint: text, uid: user.uid, at: fs.serverTimestamp() })
+}

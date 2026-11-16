@@ -958,3 +958,8 @@ input.friend-edit { height: 38px; font-size: 16px; }
 @media (max-width: 360px) {
   .phone-friends .pill-label { display: none; }
 }
+
+/* password hint */
+.hint-row { display: flex; gap: 8px; align-items: center; }
+.hint-row input { flex: 1; height: 40px; font-size: 14px; }
+.sync-hint { font-size: 14px; line-height: 1.4; padding: 10px 12px; background: var(--lemon); border: 2px solid var(--ink); border-radius: var(--r-control); }

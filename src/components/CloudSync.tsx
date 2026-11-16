@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ArrowsClockwiseIcon, CloudCheckIcon, CloudSlashIcon, CloudArrowUpIcon, CloudIcon, CloudWarningIcon } from '@phosphor-icons/react'
 import type { CloudStatus, useCloudSync } from '../lib/useCloudSync'
 import { Modal } from './Modal'
@@ -61,7 +61,19 @@ function SyncModal({ cloud, onClose }: { cloud: Cloud; onClose: () => void }) {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ text: string; bad?: boolean } | null>(null)
+  /** her password hint: shown after a wrong password or on "Show hint" (signed out), edited when signed in */
+  const [hint, setHintText] = useState<string | null>(null)
+  const [hintDraft, setHintDraft] = useState('')
   const signedIn = cloud.status.kind !== 'signed-out' && cloud.status.kind !== 'starting'
+
+  useEffect(() => {
+    if (!signedIn || !cloud.email) return
+    let alive = true
+    cloud.getHint(cloud.email).then((h) => alive && setHintDraft(h ?? ''))
+    return () => {
+      alive = false
+    }
+  }, [signedIn, cloud.email]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const act = async (fn: () => Promise<void>, done?: string) => {
     setBusy(true)
@@ -71,9 +83,17 @@ function SyncModal({ cloud, onClose }: { cloud: Cloud; onClose: () => void }) {
       if (done) setMessage({ text: done })
     } catch (e) {
       setMessage({ text: (e as Error).message, bad: true })
+      // a wrong password: offer her hint straight away
+      const code = ((e as Error).cause as { code?: string } | undefined)?.code
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') showHint()
     } finally {
       setBusy(false)
     }
+  }
+
+  const showHint = async () => {
+    const h = await cloud.getHint(email)
+    setHintText(h ?? '')
   }
 
   const submit = (e: FormEvent, create = false) => {
@@ -100,6 +120,23 @@ function SyncModal({ cloud, onClose }: { cloud: Cloud; onClose: () => void }) {
                     ? 'Everything is synced.'
                     : LABELS[cloud.status.kind as keyof typeof LABELS]}
             </p>
+            <form
+              className="field"
+              onSubmit={(e) => {
+                e.preventDefault()
+                act(() => cloud.setHint(hintDraft), hintDraft.trim() ? 'Hint saved.' : 'Hint removed.')
+              }}
+            >
+              <span className="label">Password hint</span>
+              <div className="hint-row">
+                <input value={hintDraft} maxLength={120} placeholder="A clue only you'd get, e.g. first pet + year" onChange={(e) => setHintDraft(e.target.value)} />
+                <button type="submit" className="btn small" disabled={busy}>
+                  Save
+                </button>
+              </div>
+              <span className="check-hint">Shown on the sign-in screen to anyone who types your email, so make it a clue, never the password.</span>
+            </form>
+            {message && <p className={'sync-message' + (message.bad ? ' bad' : '')}>{message.text}</p>}
             <div className="modal-actions">
               <button className="btn" disabled={busy} onClick={() => act(cloud.signOut)}>
                 Sign out
@@ -117,14 +154,29 @@ function SyncModal({ cloud, onClose }: { cloud: Cloud; onClose: () => void }) {
             </p>
             <label className="field">
               <span className="label">Email</span>
-              <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
+              <input
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setHintText(null)
+                }}
+                autoFocus
+              />
             </label>
             <label className="field">
               <span className="label">Password</span>
               <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
             {message && <p className={'sync-message' + (message.bad ? ' bad' : '')}>{message.text}</p>}
+            {hint !== null && (
+              <p className="sync-hint">{hint ? <>Your hint: <b>{hint}</b></> : 'There’s no hint saved for this email.'}</p>
+            )}
             <div className="modal-actions">
+              <button type="button" className="link" disabled={busy || !email.trim()} onClick={showHint}>
+                Show hint
+              </button>
               <button
                 type="button"
                 className="link left"

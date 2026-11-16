@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppData } from './types'
 import { activeConfig } from './firebaseConfig'
-import { friendlyError, sendReset, signIn, signOut, signUp, watchDocs, watchUser, writeDocs, type CloudUser } from './cloud'
+import { friendlyError, getHint, sendReset, setHint, signIn, signOut, signUp, watchDocs, watchUser, writeDocs, type CloudUser } from './cloud'
 import { hash, reconcile, stable, type Docs } from './syncModel'
 
 export type CloudStatus =
@@ -149,6 +149,9 @@ export function useCloudSync(
     signUp: (email: string, password: string) => run(() => signUp(email, password)),
     signOut: () => run(signOut),
     sendReset: (email: string) => run(() => sendReset(email)),
+    /** her password hint for an email (works signed out); null when there's none */
+    getHint: (email: string) => getHint(email).catch(() => null),
+    setHint: (hint: string) => run(() => setHint(hint)),
   }
 }
 

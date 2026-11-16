@@ -500,3 +500,4 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   Lesson: that export error means an agreement is waiting in the Apple Developer account, not a code problem.
 - **2026-11-04**: iPhone month view: day buttons are now bouncing round coins in their first block's colour (no dots,
   no ring), picked from a design canvas of 10 alternatives. Sent to TestFlight.
+- **2026-11-16**: Password hint. Signed in: "Password hint" field in the Sync window (≤120 chars, saved/removed with Save). Signed out: a wrong password shows "Your hint: …", and "Show hint" fetches it for the typed email. Stored at Firestore `hints/<sha256(lowercased email)>` = {hint, uid, at}; public read, only the owner (uid) may create/update/delete (`firestore.rules`). Emulator-verified (save, wrong-password hint, unknown email, unauthenticated overwrite/delete → 403). Needs the new rules published in the Firebase console before release.
