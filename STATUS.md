@@ -536,3 +536,5 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   Browser-verified: iPhone migration from old `syncedWeeks` data (switch saved, events on a never-synced week), Mac prompt,
   turning on + ⌘Z keeps Calendar on, faked clock a week on → the Mac week moved. Rust `cargo check` (macOS) clean.
   Not checked against real EventKit or a real phone.
+- **2026-11-16**: **Released v0.11.1** (the six fixes above; Release run 43940645562, latest.json 0.11.1 for both Mac
+  platforms). TestFlight build started automatically after it. Firestore hints rules still to be published by Max.
