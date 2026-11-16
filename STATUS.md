@@ -87,7 +87,8 @@ src/
   lib/tauri.ts            isTauri + invoke() shared by storage and calendar
   lib/calendar.ts         CalEvent type, access/fetch wrappers, eventsForDay (split into day/minutes), overlaps(),
                           sampleEvents() used ONLY in the browser (npm run dev) since EventKit needs the native app
-  lib/useCalendarSync.ts  live events for the visible week if synced: refresh every 2 min + on window focus
+  lib/useCalendarSync.ts  useCalendarSwitch (is Calendar on for this device) + useCalendarSync (live events for the visible
+                          week: refresh every 2 min + on focus, quick re-reads while calendars load, never wipes on a blip)
 src-tauri/src/storage.rs  load_data / save_data / reveal_data_folder commands (atomic writes, backups, recovery)
 src-tauri/src/calendar.rs EventKit via objc2-event-kit: calendar_access_status / calendar_request_access /
                           calendar_events(startMs, endMs) / open_calendar_privacy_settings
@@ -114,7 +115,9 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   Per event: title, calendar name + colour, start/end, all-day, location, notes (the last two only feed the hover card).
 - Needs "Full Access" (macOS 14+ `requestFullAccessToEventsWithCompletion`, older `requestAccessToEntityType`).
   Denied → modal with "Open System Settings" (Privacy & Security → Calendars).
-- `AppData.syncedWeeks` (Monday ISO dates) records which weeks she synced; it's undoable like any change.
+- `AppData.calendarOn` is the switch, per device (never synced): once on, every week/day shows Calendar. Turning it on is
+  not an undo step and undo/redo never flip it. Older versions used `syncedWeeks` (Monday ISO dates, synced between
+  devices; still written for them): those count as on only where this device already has Calendar access.
   Events themselves are NOT stored: they're re-read live, so additions/moves/deletions in Calendar show up.
 - Sync prompt: modal on the *current* week when it has no blocks and isn't synced; "Not now" hides it for the session.
 - Conflicts: a block overlapping a timed event gets a red ring + ⚠ (tooltip lists the clashes); the event gets a ring too.
@@ -223,7 +226,7 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   in the browser. `isIPad` is now false on iPhone; `isIOS` = either (no autofocus keyboards, Settings-app wording).
 - Screen: day name + date (lemon "Today" tag, or "Go to today"), ‹ › and sideways swipes (>70px, mostly horizontal) change
   day; the new day slides in from that side. Left open overnight on today, it follows to the new today.
-  Strip under the header: cloud sync pill (sign-in) + **Day**: calendar pill (syncs the *week*, as on the Mac) / **To-do**: sound.
+  Strip under the header: cloud sync pill (sign-in) + **Day**: calendar pill (one switch for every day, as on the Mac) / **To-do**: sound.
 - **Day tab**: scrolling timeline, 64px per hour, 9:00–22:00 widened for earlier/later items (visibleRange), all-day events
   on top, lanes for overlaps, clash rings, now line. Opens scrolled to now (today) / the first item / the top.
   Tap a block → block editor; tap an event → read-only details sheet; tap empty time → new 1h block there.
@@ -511,3 +514,25 @@ src-tauri/Info.plist      merged into the bundle; usage strings for the Document
   4 s before it's believed. (3) Calendar is one device-local switch, `AppData.calendarOn` (not synced, as access is per
   device): once on, every week shows Calendar; any `syncedWeeks` entry also counts as on; enabling still adds the week to
   `syncedWeeks` for older app versions. Prompt now "Show your Apple Calendar here?".
+- **2026-11-16**: Bug hunt for things that would upset her, six fixes:
+  1. The vanishing-events fix above was only on main when the hunt began; another session released it as **v0.11.0**
+     (19:23 UTC) meanwhile. v0.11.0 still has items 2–6.
+  2. **iPhone** still showed Calendar only for weeks in `syncedWeeks`, so with the new Mac (which adds just the first week)
+     every new week on her phone would have shown none. Both screens now share `useCalendarSwitch` (lib/useCalendarSync.ts).
+  3. **"Syncing…" that never ended**: "no-calendars" only re-read on the 2-minute timer. Now quick re-reads (1.5 s … 25 s,
+     about a minute in all), then a plain "your calendars haven't loaded yet" error (still re-reading every 2 min). Rust:
+     the permission prompt uses a store of its own, so the shared store is only ever made once access is granted (a store
+     made before "Don't Allow" → switch on in System Settings never saw her calendars); an empty read `reset`s the store and
+     tries once more before saying "no-calendars".
+  4. **Red "Calendar access off" on a device she never turned on**: `syncedWeeks` syncs between devices, so turning Calendar
+     on on the iPhone made the iPad show the warning. Now `syncedWeeks` only counts where this device already has Calendar
+     access (and `calendarOn` is then saved once, so her Mac stays on after updating). Turning it on is no longer an undo
+     step, and undo/redo keep `calendarOn` like the sync bookkeeping (`withSync` in store.ts).
+  5. **Password hint**: the hints rules weren't published (an anonymous read got 403), so saving a hint said "This account
+     isn't allowed to sync these plans" and "Show hint" claimed there was no hint. Now a refused save says the hint didn't
+     save and her plans still sync; a failed lookup says so. **Max still has to publish `firestore.rules` in the Firebase console.**
+  6. **Mac week follows today**: left open into a new week while showing today's week, the screen moves on with it (the
+     to-dos she hadn't ticked had just moved to today, off screen). The iPhone already did this for days.
+  Browser-verified: iPhone migration from old `syncedWeeks` data (switch saved, events on a never-synced week), Mac prompt,
+  turning on + ⌘Z keeps Calendar on, faked clock a week on → the Mac week moved. Rust `cargo check` (macOS) clean.
+  Not checked against real EventKit or a real phone.

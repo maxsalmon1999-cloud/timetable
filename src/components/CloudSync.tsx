@@ -62,14 +62,14 @@ function SyncModal({ cloud, onClose }: { cloud: Cloud; onClose: () => void }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ text: string; bad?: boolean } | null>(null)
   /** her password hint: shown after a wrong password or on "Show hint" (signed out), edited when signed in */
-  const [hint, setHintText] = useState<string | null>(null)
+  const [hint, setHintText] = useState<{ text: string | null; failed?: true } | null>(null)
   const [hintDraft, setHintDraft] = useState('')
   const signedIn = cloud.status.kind !== 'signed-out' && cloud.status.kind !== 'starting'
 
   useEffect(() => {
     if (!signedIn || !cloud.email) return
     let alive = true
-    cloud.getHint(cloud.email).then((h) => alive && setHintDraft(h ?? ''))
+    cloud.getHint(cloud.email).then((h) => alive && h !== undefined && setHintDraft(h ?? ''))
     return () => {
       alive = false
     }
@@ -93,7 +93,7 @@ function SyncModal({ cloud, onClose }: { cloud: Cloud; onClose: () => void }) {
 
   const showHint = async () => {
     const h = await cloud.getHint(email)
-    setHintText(h ?? '')
+    setHintText(h === undefined ? { text: null, failed: true } : { text: h })
   }
 
   const submit = (e: FormEvent, create = false) => {
@@ -171,7 +171,17 @@ function SyncModal({ cloud, onClose }: { cloud: Cloud; onClose: () => void }) {
             </label>
             {message && <p className={'sync-message' + (message.bad ? ' bad' : '')}>{message.text}</p>}
             {hint !== null && (
-              <p className="sync-hint">{hint ? <>Your hint: <b>{hint}</b></> : 'There’s no hint saved for this email.'}</p>
+              <p className="sync-hint">
+                {hint.failed ? (
+                  'Couldn’t look up your hint just now. Try again in a moment.'
+                ) : hint.text ? (
+                  <>
+                    Your hint: <b>{hint.text}</b>
+                  </>
+                ) : (
+                  'There’s no hint saved for this email.'
+                )}
+              </p>
             )}
             <div className="modal-actions">
               <button type="button" className="link" disabled={busy || !email.trim()} onClick={showHint}>

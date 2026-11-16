@@ -34,9 +34,10 @@ type Action =
   /** sync bookkeeping only (AppData.sync): no undo step */
   | { type: 'syncMeta'; fn: (s: AppData['sync']) => AppData['sync'] }
 
+/** a snapshot of her plans with this device's own settings as they are now (sync bookkeeping, the Calendar switch) */
 const withSync = (d: AppData, from: AppData): AppData => {
-  const { sync: _, ...rest } = d // eslint-disable-line @typescript-eslint/no-unused-vars
-  return from.sync ? { ...rest, sync: from.sync } : rest
+  const { sync: _, calendarOn: _c, ...rest } = d // eslint-disable-line @typescript-eslint/no-unused-vars
+  return { ...rest, ...(from.sync ? { sync: from.sync } : {}), ...(from.calendarOn ? { calendarOn: true } : {}) }
 }
 
 function reducer(s: State, a: Action): State {
@@ -49,7 +50,8 @@ function reducer(s: State, a: Action): State {
       if (next === s.present) return s
       return { past: [...s.past, s.present].slice(-HISTORY_LIMIT), present: next, future: [] }
     }
-    // undo/redo move her plans, never the sync bookkeeping (it describes the cloud, which undo doesn't touch)
+    // undo/redo move her plans, never the sync bookkeeping (it describes the cloud, which undo doesn't touch) or the
+    // Calendar switch (a setting of this device)
     case 'undo': {
       if (!s.present || !s.past.length) return s
       return { past: s.past.slice(0, -1), present: withSync(s.past[s.past.length - 1], s.present), future: [s.present, ...s.future] }

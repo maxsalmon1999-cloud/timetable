@@ -53,7 +53,7 @@ mod imp {
     use block2::RcBlock;
     use objc2::{available, rc::Retained, runtime::Bool};
     use objc2_core_graphics::{CGColor, CGColorRenderingIntent, CGColorSpace, kCGColorSpaceSRGB};
-    use objc2_event_kit::{EKAuthorizationStatus, EKCalendarType, EKEntityType, EKEventStore};
+    use objc2_event_kit::{EKAuthorizationStatus, EKCalendar, EKCalendarType, EKEntityType, EKEventStore};
     use objc2_foundation::{NSArray, NSDate, NSError, NSString};
     use std::sync::{Mutex, MutexGuard, OnceLock, mpsc};
 
@@ -86,8 +86,10 @@ mod imp {
         if status() == "granted" {
             return true;
         }
-        let shared = store();
-        let store = &shared.0;
+        // A store of its own for the question. The shared one is only made once access is granted (in `events`), so it
+        // never starts out unable to see her calendars, e.g. after "Don't Allow" and then switching it on in System
+        // Settings. It also means a prompt left open doesn't hold the shared store's lock.
+        let store = unsafe { EKEventStore::new() };
         let (tx, rx) = mpsc::channel();
         let block = RcBlock::new(move |granted: Bool, _err: *mut NSError| {
             let _ = tx.send(granted.as_bool());
@@ -104,9 +106,24 @@ mod imp {
         // blocks this worker thread (not the UI) until she answers the prompt
         let granted = rx.recv().unwrap_or(false);
         if granted {
-            unsafe { store.reset() } // reload now that it may read her calendars
+            // a shared store from an earlier spell of access: reload it now it may read her calendars again
+            if let Some(shared) = STORE.get() {
+                let shared = shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+                unsafe { shared.0.reset() }
+            }
         }
         granted
+    }
+
+    /// her calendars, except the auto-generated Birthdays one
+    unsafe fn her_calendars(store: &EKEventStore) -> Vec<Retained<EKCalendar>> {
+        unsafe {
+            store
+                .calendarsForEntityType(EKEntityType::Event)
+                .iter()
+                .filter(|c| c.r#type() != EKCalendarType::Birthday)
+                .collect()
+        }
     }
 
     /// the calendar's colour as #RRGGBB (CGColor works on both the Mac and the iPad)
@@ -134,14 +151,15 @@ mod imp {
         unsafe {
             // pick up changes from iCloud / Google / Exchange if they're due
             store.refreshSourcesIfNecessary();
-            // everything except the auto-generated Birthdays calendar
-            let calendars: Vec<_> = store
-                .calendarsForEntityType(EKEntityType::Event)
-                .iter()
-                .filter(|c| c.r#type() != EKCalendarType::Birthday)
-                .collect();
+            let mut calendars = her_calendars(store);
             if calendars.is_empty() {
-                // not loaded yet (or none at all): say so, so the app keeps what it last showed rather than wiping it
+                // a store that lost sight of her calendars (access switched off and on again, or not loaded yet) sees
+                // them again after a reset
+                store.reset();
+                calendars = her_calendars(store);
+            }
+            if calendars.is_empty() {
+                // still none: say so, so the app keeps what it last showed rather than wiping it, and looks again soon
                 return Err("no-calendars".into());
             }
             let calendars = NSArray::from_retained_slice(&calendars);

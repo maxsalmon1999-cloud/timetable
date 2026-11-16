@@ -143,6 +143,14 @@ export async function setHint(hint: string) {
   if (!user?.email) throw new Error('Sign in first.')
   const ref = fs.doc(db, 'hints', await hintId(user.email))
   const text = hint.trim().slice(0, MAX_HINT)
-  if (!text) await fs.deleteDoc(ref)
-  else await fs.setDoc(ref, { hint: text, uid: user.uid, at: fs.serverTimestamp() })
+  try {
+    if (!text) await fs.deleteDoc(ref)
+    else await fs.setDoc(ref, { hint: text, uid: user.uid, at: fs.serverTimestamp() })
+  } catch (e) {
+    // never the general "isn't allowed to sync" message: her plans are fine, only the hint didn't save
+    const code = (e as { code?: string })?.code
+    if (code === 'permission-denied' || code === 'unavailable')
+      throw new Error('Couldn’t save your hint just now. Your plans still sync as normal. Try again later.', { cause: e })
+    throw e
+  }
 }

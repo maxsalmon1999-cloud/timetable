@@ -22,7 +22,7 @@ import type { Block } from './lib/types'
 import { MAX_END, MIN_START, uid } from './lib/constants'
 import { addDays, fmtDuration, fmtTime, fromISO, startOfWeek, toISO } from './lib/dates'
 import { accessStatus, eventsForDay, overlaps, requestAccess, type CalEvent, type DayEvent } from './lib/calendar'
-import { useCalendarSync, type SyncState } from './lib/useCalendarSync'
+import { useCalendarSwitch, useCalendarSync, type SyncState } from './lib/useCalendarSync'
 import { DEFAULT_TARGETS, visibleRange } from './lib/dayRange'
 import { layoutLanes } from './lib/layout'
 import { discIcon, PALETTE } from './lib/icons'
@@ -115,7 +115,9 @@ export default function PhoneApp() {
   const weekStart = useMemo(() => startOfWeek(fromISO(date)), [date])
   const weekKey = toISO(weekStart)
   const day = (fromISO(date).getDay() + 6) % 7
-  const synced = !!data?.syncedWeeks?.includes(weekKey)
+  // once she's turned Calendar on (on this device), every day shows it, as on the Mac
+  const calendar = useCalendarSwitch(data, updateSilently)
+  const synced = calendar.on
   const cal = useCalendarSync(weekStart, synced)
   const events = useMemo(() => eventsForDay(cal.events, date), [cal.events, date])
   const blocks = useMemo(() => (data ? data.blocks.filter((b) => b.date === date) : []), [data, date])
@@ -127,7 +129,7 @@ export default function PhoneApp() {
     return () => clearTimeout(t)
   }, [toast])
 
-  // ---------- Apple Calendar (per week, like on the Mac) ----------
+  // ---------- Apple Calendar (one switch for every day, like on the Mac) ----------
   const syncWeek = async () => {
     let access = await accessStatus()
     if (access === 'notDetermined') access = (await requestAccess()) ? 'granted' : 'denied'
@@ -141,7 +143,7 @@ export default function PhoneApp() {
       return
     }
     if (synced) cal.refresh()
-    else update((d) => ({ ...d, syncedWeeks: [...(d.syncedWeeks ?? []), weekKey] }))
+    else calendar.turnOn(weekKey)
   }
 
   // ---------- swiping between days ----------
@@ -481,25 +483,25 @@ function MonthView({ month, today, blocks, onPick }: { month: string; today: str
   )
 }
 
-/** Calendar on/off for the week of the day on screen */
+/** Calendar on/off (one switch for every day on this device) */
 function CalendarPill({ synced, state, onClick }: { synced: boolean; state: SyncState; onClick: () => void }) {
   const p = { size: 18, weight: 'bold' as const }
   if (!synced)
     return (
-      <button className="save-pill phone-cal" onClick={onClick} title="Show this week’s calendar events">
+      <button className="save-pill phone-cal" onClick={onClick} title="Show your calendar events">
         <CalendarPlusIcon {...p} />
         Calendar
       </button>
     )
   if (state.kind === 'no-access' || state.kind === 'error')
     return (
-      <button className="save-pill phone-cal bad" onClick={onClick}>
+      <button className="save-pill phone-cal bad" onClick={onClick} title={state.kind === 'error' ? state.message : undefined}>
         <WarningIcon {...p} />
-        Calendar off
+        {state.kind === 'error' ? 'Calendar' : 'Calendar off'}
       </button>
     )
   return (
-    <button className="save-pill phone-cal on" onClick={onClick} title="Shows this week’s calendar events; tap to refresh">
+    <button className="save-pill phone-cal on" onClick={onClick} title="Shows your calendar events; tap to refresh">
       {state.kind === 'ok' ? <CalendarCheckIcon {...p} /> : <CalendarBlankIcon {...p} />}
       Calendar
     </button>

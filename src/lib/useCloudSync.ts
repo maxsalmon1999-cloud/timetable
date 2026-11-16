@@ -149,8 +149,8 @@ export function useCloudSync(
     signUp: (email: string, password: string) => run(() => signUp(email, password)),
     signOut: () => run(signOut),
     sendReset: (email: string) => run(() => sendReset(email)),
-    /** her password hint for an email (works signed out); null when there's none */
-    getHint: (email: string) => getHint(email).catch(() => null),
+    /** her password hint for an email (works signed out); null when there's none, undefined when it couldn't be looked up */
+    getHint: (email: string): Promise<string | null | undefined> => getHint(email).catch(() => undefined),
     setHint: (hint: string) => run(() => setHint(hint)),
   }
 }

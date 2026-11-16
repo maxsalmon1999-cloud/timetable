@@ -7,7 +7,7 @@ import { useFriends } from './lib/useFriends'
 import { addFriend, changeFriend, live, removeFriend } from './lib/friends'
 import { FriendsPanel, FriendsPing } from './components/Friends'
 import { MAX_END, MIN_START, SNAP, snap, uid } from './lib/constants'
-import { addDays, fmtTime, startOfWeek, monthLabel, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
+import { addDays, fmtTime, fromISO, startOfWeek, monthLabel, TEMPLATE_DATES, toISO, weekDates, weekLabel } from './lib/dates'
 import { WeekGrid, type HitTest, type Preview } from './components/WeekGrid'
 import { Sidebar } from './components/Sidebar'
 import { BlockEditor } from './components/BlockEditor'
@@ -20,7 +20,7 @@ import { DEFAULT_TARGETS, visibleRange, type RangeTargets } from './lib/dayRange
 import { discIcon, PALETTE } from './lib/icons'
 import { ActivityIcon } from './components/ActivityIcon'
 import { ArrowUUpLeftIcon, ArrowUUpRightIcon, CaretLeftIcon, CaretRightIcon, CheckIcon, SquaresFourIcon } from '@phosphor-icons/react'
-import { useCalendarSync } from './lib/useCalendarSync'
+import { useCalendarSwitch, useCalendarSync } from './lib/useCalendarSync'
 import { SyncButton } from './components/SyncButton'
 import { UpdateNotice } from './components/UpdateNotice'
 import { TodoMenu } from './components/TodoMenu'
@@ -99,6 +99,14 @@ export default function App() {
   const friends = useFriends(data, today, updateSilently)
   const [friendsOpen, setFriendsOpen] = useState(false)
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
+  // left open into a new week (overnight, or asleep over the weekend) while showing today's week: follow today there,
+  // as the to-dos she hadn't ticked have just moved on to today
+  const [shownToday, setShownToday] = useState(today)
+  if (shownToday !== today) {
+    setShownToday(today)
+    const next = startOfWeek(fromISO(today))
+    if (toISO(weekStart) === toISO(startOfWeek(fromISO(shownToday))) && toISO(next) !== toISO(weekStart)) setWeekStart(next)
+  }
   const [drag, setDrag] = useState<Drag | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
   /** the activity type she's looking at (hover/hold in the sidebar) */
@@ -120,8 +128,9 @@ export default function App() {
     [data, draft, dates],
   )
   const weekKey = inTemplate ? 'template' : dates[0]
-  // once she's turned Calendar on, every week shows it (older versions asked week by week)
-  const synced = !inTemplate && (!!data?.calendarOn || !!data?.syncedWeeks?.length)
+  // once she's turned Calendar on (on this device), every week shows it
+  const calendar = useCalendarSwitch(data, updateSilently)
+  const synced = !inTemplate && calendar.on
   const cal = useCalendarSync(weekStart, synced)
   const updater = useUpdater()
 
@@ -162,8 +171,7 @@ export default function App() {
       return
     }
     if (synced) cal.refresh()
-    // syncedWeeks too, so devices still on an older version show this week
-    else update((d) => ({ ...d, calendarOn: true, syncedWeeks: [...new Set([...(d.syncedWeeks ?? []), weekKey])] }))
+    else calendar.turnOn(weekKey)
   }
 
   // ---------- data operations ----------
@@ -374,7 +382,7 @@ export default function App() {
   const friendNames = Object.fromEntries(live(data.friends).map((f) => [f.id, f.name]))
   const isThisWeek = toISO(weekStart) === toISO(startOfWeek(new Date()))
   const showSyncPrompt =
-    !inTemplate && isThisWeek && !synced && weekBlocks.length === 0 && syncPromptDismissed !== weekKey &&
+    !inTemplate && isThisWeek && calendar.known && !synced && weekBlocks.length === 0 && syncPromptDismissed !== weekKey &&
     !editing && !confirming && !(restoredFrom && !restoreNoticeSeen) && !friends.ping
   // while moving/resizing, hide the original so only the preview shows
   const hiddenId = drag?.active && drag.preview && (drag.kind === 'move' || drag.kind === 'resize') ? drag.block.id : null

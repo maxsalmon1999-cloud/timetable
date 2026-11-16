@@ -5,7 +5,7 @@ import { fmtTime } from '../lib/dates'
 export function SyncButton({ synced, state, onClick }: { synced: boolean; state: SyncState; onClick: () => void }) {
   if (!synced)
     return (
-      <button className="btn sky" onClick={onClick} title="Show this week's Apple Calendar events">
+      <button className="btn sky" onClick={onClick} title="Show your Apple Calendar events on every week">
         <CalendarPlusIcon size={22} weight="bold" />
         <span className="btn-label">Sync with Calendar</span>
       </button>
